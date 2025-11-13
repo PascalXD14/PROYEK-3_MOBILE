@@ -1,0 +1,82 @@
+# ========== Laravel / PHP ==========
+/.phpunit.cache
+/vendor/
+.env
+.env.* 
+.phpactor.json
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/auth.json
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/storage/*.sqlite
+bootstrap/cache/
+
+# Node / build
+/node_modules
+/public/build
+/dist
+/.parcel-cache
+
+# ========== Flutter / Dart ==========
+# Dart / Flutter tools
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+pubspec.lock
+
+# Flutter build outputs
+build/
+android/app/build/
+ios/Pods/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+**/GeneratedPluginRegistrant.*
+*.apk
+*.aab
+
+# Android / Gradle
+.android/
+.gradle/
+**/gradle-wrapper.jar
+**/local.properties
+
+# iOS / Xcode
+ios/Runner.xcworkspace/
+ios/Pods/
+xcuserdata/
+DerivedData/
+
+# Windows / Linux / macOS builds
+windows/flutter/ephemeral/
+macos/Flutter/ephemeral/
+linux/flutter/ephemeral/
+*.exe
+*.dll
+*.so
+
+# ========== IDE / OS ==========
+.idea/
+.vscode/
+*.iml
+*.log
+.DS_Store
+Thumbs.db
+
+# ========== Temporary / cache ==========
+*.swp
+*.tmp
+*.cache
+*.bak
+
+# ========== Large binaries (example) ==========
+# masukkan file/folder besar yang ingin di-ignore, contoh:
+# assets/large_media/
+# releases/*.apk
