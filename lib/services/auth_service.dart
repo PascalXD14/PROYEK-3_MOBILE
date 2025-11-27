@@ -12,6 +12,8 @@ class AuthService {
   static const _kEmail = 'email';
   static const _kUsername = 'username';
   static const _kAvatar = 'avatar_url';
+  static const _kPhone = 'phone';
+  static const _kAddress = 'address';
 
   // Notifier supaya UI (header dll.) bisa listen perubahan avatar langsung
   static final ValueNotifier<String?> avatarNotifier = ValueNotifier<String?>(
@@ -41,6 +43,9 @@ class AuthService {
 
     // nggak ada avatar biasanya for guest -> kosong
     await prefs.remove(_kAvatar);
+    // also remove phone/address for guest
+    await prefs.remove(_kPhone);
+    await prefs.remove(_kAddress);
     avatarNotifier.value = null;
 
     return data;
@@ -83,7 +88,8 @@ class AuthService {
       debugPrint('Token disimpan: $token');
     }
 
-    final user = (body['user'] ?? {}) as Map<String, dynamic>;
+    // take user object from possible locations
+    final user = (body['user'] ?? body['data'] ?? {}) as Map<String, dynamic>;
     if (user.isNotEmpty) {
       if (user['id'] != null) await prefs.setInt(_kUserId, user['id']);
       await prefs.setString(_kRole, (user['role'] ?? 'customer').toString());
@@ -91,8 +97,24 @@ class AuthService {
       await prefs.setString(_kEmail, (user['email'] ?? '').toString());
       await prefs.setString(_kUsername, (user['username'] ?? '').toString());
 
+      // phone (optional) — cek beberapa kemungkinan key (phone / phone_number)
+      final phoneRaw = (user['phone'] ?? user['phone_number'] ?? '').toString();
+      if (phoneRaw.isNotEmpty) {
+        await prefs.setString(_kPhone, phoneRaw);
+      } else {
+        await prefs.remove(_kPhone);
+      }
+
+      // address (optional) — cek 'address' atau 'alamat'
+      final addressRaw = (user['address'] ?? user['alamat'] ?? '').toString();
+      if (addressRaw.isNotEmpty) {
+        await prefs.setString(_kAddress, addressRaw);
+      } else {
+        await prefs.remove(_kAddress);
+      }
+
       // pastikan avatar disimpan sebagai ABSOLUT
-      final rawAvatar = (user['avatar_url'] ?? '').toString();
+      final rawAvatar = (user['avatar_url'] ?? user['avatar'] ?? '').toString();
       final absoluteAvatar = ApiConfig.toAbsolute(rawAvatar);
       if (absoluteAvatar.isNotEmpty) {
         await prefs.setString(_kAvatar, absoluteAvatar);
@@ -160,7 +182,56 @@ class AuthService {
       'username': p.getString(_kUsername) ?? '',
       'avatar_url': p.getString(_kAvatar) ?? '',
       'role': p.getString(_kRole) ?? '',
+      'phone': p.getString(_kPhone) ?? '',
+      'address': p.getString(_kAddress) ?? '',
     };
+  }
+
+  /// Simpan kembali informasi user ke cache (dipanggil setelah update profil sukses)
+  Future<void> setCachedUserInfo(Map<String, dynamic> user) async {
+    final p = await SharedPreferences.getInstance();
+    if (user['id'] != null) {
+      try {
+        await p.setInt(
+          _kUserId,
+          (user['id'] is int) ? user['id'] : int.parse(user['id'].toString()),
+        );
+      } catch (_) {}
+    }
+    if (user['name'] != null)
+      await p.setString(_kName, (user['name'] ?? '').toString());
+    if (user['email'] != null)
+      await p.setString(_kEmail, (user['email'] ?? '').toString());
+    if (user['username'] != null)
+      await p.setString(_kUsername, (user['username'] ?? '').toString());
+    if (user['role'] != null)
+      await p.setString(_kRole, (user['role'] ?? '').toString());
+
+    // phone/address
+    final phoneRaw = (user['phone'] ?? user['phone_number'] ?? '').toString();
+    if (phoneRaw.isNotEmpty) {
+      await p.setString(_kPhone, phoneRaw);
+    } else {
+      await p.remove(_kPhone);
+    }
+
+    final addressRaw = (user['address'] ?? user['alamat'] ?? '').toString();
+    if (addressRaw.isNotEmpty) {
+      await p.setString(_kAddress, addressRaw);
+    } else {
+      await p.remove(_kAddress);
+    }
+
+    // avatar (pastikan absolut)
+    final rawAvatar = (user['avatar_url'] ?? user['avatar'] ?? '').toString();
+    final absoluteAvatar = ApiConfig.toAbsolute(rawAvatar);
+    if (absoluteAvatar.isNotEmpty) {
+      await p.setString(_kAvatar, absoluteAvatar);
+      avatarNotifier.value = absoluteAvatar;
+    } else {
+      await p.remove(_kAvatar);
+      avatarNotifier.value = null;
+    }
   }
 
   Future<void> setCachedAvatar(String url) async {
@@ -195,6 +266,8 @@ class AuthService {
     await p.remove(_kEmail);
     await p.remove(_kUsername);
     await p.remove(_kAvatar);
+    await p.remove(_kPhone);
+    await p.remove(_kAddress);
     avatarNotifier.value = null;
   }
 }

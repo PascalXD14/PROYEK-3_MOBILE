@@ -1,11 +1,13 @@
+// lib/profile/profil.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../services/profile_service.dart';
-import '../../services/auth_service.dart';
-import '../../entry/login.dart';
-import '../../widgets/navbar.dart';
+import '../services/profile_service.dart';
+import '../services/auth_service.dart';
+import '../entry/login.dart';
+import '../widgets/navbar.dart';
+import 'pengaturan_akun.dart';
 
 class ProfilePage extends StatefulWidget {
   final int userId;
@@ -26,9 +28,11 @@ class _ProfilePageState extends State<ProfilePage> {
       'id': widget.userId,
       'username': p.getString('username') ?? '',
       'email': p.getString('email') ?? '',
-      'name': p.getString('name'),
-      'role': p.getString('role'),
-      'avatar_url': p.getString('avatar_url'),
+      'name': p.getString('name') ?? '',
+      'role': p.getString('role') ?? '',
+      'avatar_url': p.getString('avatar_url') ?? '',
+      'phone': p.getString('phone') ?? '',
+      'address': p.getString('address') ?? '',
     };
     if ((cached['username'] as String).isNotEmpty ||
         (cached['email'] as String).isNotEmpty) {
@@ -68,6 +72,8 @@ class _ProfilePageState extends State<ProfilePage> {
       if (data.avatarUrl != null) {
         await p.setString('avatar_url', data.avatarUrl!);
       }
+      if (data.phone != null) await p.setString('phone', data.phone!);
+      if (data.address != null) await p.setString('address', data.address!);
     } catch (e) {
       if (!mounted) return;
       setState(() => loading = false);
@@ -103,6 +109,9 @@ class _ProfilePageState extends State<ProfilePage> {
           name: me!.name,
           role: me!.role,
           avatarUrl: '${url}?t=${DateTime.now().millisecondsSinceEpoch}',
+          phone: me!.phone,
+          address: me!.address,
+          gender: me!.gender,
         );
       });
 
@@ -116,6 +125,274 @@ class _ProfilePageState extends State<ProfilePage> {
         context,
       ).showSnackBar(SnackBar(content: Text('Upload gagal: $e')));
     }
+  }
+
+  Future<void> _showLogoutDialog() async {
+    // simpan parent context supaya bisa digunakan untuk navigasi setelah dialog ditutup
+    final BuildContext parentContext = context;
+
+    await showGeneralDialog(
+      context: parentContext, // gunakan parent context di sini juga
+      barrierColor: Colors.black.withOpacity(0.6),
+      barrierDismissible: true,
+      barrierLabel: 'Logout Confirmation',
+      transitionDuration: const Duration(milliseconds: 400),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curvedAnimation = CurvedAnimation(
+          parent: animation,
+          curve: Curves.fastEaseInToSlowEaseOut,
+        );
+
+        return ScaleTransition(
+          scale: Tween<double>(begin: 0.8, end: 1.0).animate(curvedAnimation),
+          child: FadeTransition(opacity: curvedAnimation, child: child),
+        );
+      },
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        // dialogContext adalah context yang valid hanya untuk dialog UI
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 40,
+                  offset: const Offset(0, 20),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Animated Icon
+                  ScaleTransition(
+                    scale: Tween<double>(begin: 0.5, end: 1.0).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: const Interval(
+                          0.0,
+                          0.6,
+                          curve: Curves.elasticOut,
+                        ),
+                      ),
+                    ),
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFFFECACA),
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFDC2626).withOpacity(0.2),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.logout_rounded,
+                        color: Color(0xFFDC2626),
+                        size: 36,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Title with fade animation
+                  FadeTransition(
+                    opacity: CurvedAnimation(
+                      parent: animation,
+                      curve: const Interval(0.4, 0.8),
+                    ),
+                    child: const Text(
+                      'Keluar dari Akun?',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Description with fade animation
+                  FadeTransition(
+                    opacity: CurvedAnimation(
+                      parent: animation,
+                      curve: const Interval(0.5, 0.9),
+                    ),
+                    child: Text(
+                      'Anda harus login kembali untuk mengakses akun',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // Buttons with slide animation
+                  SlideTransition(
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(0, 0.5),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: const Interval(
+                              0.6,
+                              1.0,
+                              curve: Curves.easeOut,
+                            ),
+                          ),
+                        ),
+                    child: Row(
+                      children: [
+                        // Cancel Button
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  // pakai dialogContext untuk menutup dialog
+                                  Navigator.of(dialogContext).pop();
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                child: Container(
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      'Batal',
+                                      style: TextStyle(
+                                        color: Colors.black87,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        // Logout Button
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFFDC2626,
+                                  ).withOpacity(0.4),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () async {
+                                  // close dialog first using dialogContext (safe)
+                                  Navigator.of(dialogContext).pop();
+
+                                  // optional small delay for UX
+                                  await Future.delayed(
+                                    const Duration(milliseconds: 120),
+                                  );
+
+                                  // perform logout
+                                  await AuthService().logout();
+
+                                  // use parentContext (state's context) for navigation
+                                  if (!mounted) return;
+                                  Navigator.of(
+                                    parentContext,
+                                  ).pushAndRemoveUntil(
+                                    MaterialPageRoute(
+                                      builder: (_) => const LoginPage(),
+                                    ),
+                                    (route) => false,
+                                  );
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                child: Container(
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFFDC2626),
+                                        Color(0xFFEF4444),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      'Ya, Keluar',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -164,7 +441,7 @@ class _ProfilePageState extends State<ProfilePage> {
             letterSpacing: -0.5,
           ),
         ),
-        automaticallyImplyLeading: false, // no back, no more-vert
+        automaticallyImplyLeading: false,
         centerTitle: false,
       ),
       body: SafeArea(
@@ -321,18 +598,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () async {
-                          await AuthService().logout();
-
-                          if (!mounted) return;
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (_) => const LoginPage(),
-                            ),
-                            (route) => false,
-                          );
-                        },
-
+                        onTap: _showLogoutDialog,
                         borderRadius: BorderRadius.circular(18),
                         child: Container(
                           height: 56,
@@ -373,17 +639,20 @@ class _ProfilePageState extends State<ProfilePage> {
 
                   // menu items
                   _Menu(
-                    icon: Icons.person_outline_rounded,
-                    text: 'Edit Profil',
-                    color: const Color(0xFF22C55E),
-                    onTap: () {},
-                  ),
-                  _Menu(
                     icon: Icons.settings_outlined,
                     text: 'Pengaturan Akun',
                     color: const Color(0xFF3B82F6),
-                    onTap: () {},
+                    onTap: () {
+                      // buka dulu halaman Pengaturan Akun (AccountSettingsMenu)
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AccountSettingsMenu(userId: widget.userId),
+                        ),
+                      );
+                    },
                   ),
+
                   _Menu(
                     icon: Icons.location_on_outlined,
                     text: 'Alamat Saya',

@@ -3,7 +3,7 @@ import '../services/auth_service.dart';
 import '../services/api_config.dart';
 
 class CustomHeader extends StatelessWidget {
-  const CustomHeader({super.key});
+  const CustomHeader({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -12,13 +12,35 @@ class CustomHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
-            padding: const EdgeInsets.all(6),
-            child: const Icon(
-              Icons.chat_bubble_outline,
-              size: 30,
-              color: Colors.black87,
+          GestureDetector(
+            onTap: () async {
+              final auth = AuthService();
+
+              final token = await auth.getToken();
+              final myUserId = await auth.getUserId();
+
+              if (token == null || myUserId == null) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Silakan login terlebih dahulu'),
+                  ),
+                );
+                return;
+              }
+
+              if (!context.mounted) return;
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.all(6),
+              child: const Icon(
+                Icons.chat_bubble_outline,
+                size: 30,
+                color: Colors.black87,
+              ),
             ),
           ),
 
@@ -46,12 +68,12 @@ class CustomHeader extends StatelessWidget {
             ),
           ),
 
-          // Avatar: listen ke avatarNotifier supaya otomatis update
+          // Avatar
           ValueListenableBuilder<String?>(
             valueListenable: AuthService.avatarNotifier,
             builder: (context, avatarUrl, _) {
-              // Pastikan absolut (AuthService sudah menyimpan absolut tapi double-check)
-              final resolved = ApiConfig.toAbsolute(avatarUrl);
+              final resolved = ApiConfig.toAbsolute(avatarUrl ?? '');
+
               if (resolved.isEmpty) {
                 return const CircleAvatar(
                   radius: 22,
@@ -64,9 +86,6 @@ class CustomHeader extends StatelessWidget {
                 radius: 22,
                 backgroundImage: NetworkImage(resolved),
                 backgroundColor: Colors.transparent,
-                onBackgroundImageError: (_, __) {
-                  // fallback, tapi tetap show placeholder
-                },
               );
             },
           ),

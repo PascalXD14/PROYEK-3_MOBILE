@@ -73,7 +73,13 @@ class _LoginPageState extends State<LoginPage> {
           // Konten form
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
