@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/order_service.dart';
-import '../services/api_config.dart';
 import '../widgets/header.dart';
 import '../widgets/navbar.dart';
+import '../services/api_config.dart';
+import '../services/review_service.dart';
 
 class OrderListPage extends StatefulWidget {
   final int userId;
@@ -37,11 +38,13 @@ class _OrderListPageState extends State<OrderListPage> {
       final response = await orderService.getOrders();
       setState(() => orders = response);
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Gagal memuat pesanan: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal memuat pesanan: $e')));
+      }
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -142,26 +145,335 @@ class _OrderListPageState extends State<OrderListPage> {
     }).toList();
   }
 
+  /// 🌟 === DIALOG REVIEW ===
+  Future<void> _showReviewDialog(int productId, int transactionId) async {
+    double rating = 0;
+    final TextEditingController commentCtrl = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(horizontal: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              backgroundColor: Colors.white,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // HEADER
+                        Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.orange.shade300,
+                                    Colors.amber.shade500,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.star_rate_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Beri Ulasan",
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[800],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "Bagikan pengalaman Anda",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // RATING SECTION
+                        Center(
+                          child: Column(
+                            children: [
+                              Text(
+                                "Bagaimana pengalaman Anda?",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[50],
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: List.generate(5, (i) {
+                                        return GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              rating = (i + 1).toDouble();
+                                            });
+                                          },
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 200,
+                                            ),
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
+                                            child: Icon(
+                                              i < rating
+                                                  ? Icons.star_rounded
+                                                  : Icons.star_outline_rounded,
+                                              color: i < rating
+                                                  ? Colors.amber
+                                                  : Colors.grey[400],
+                                              size: 40,
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      rating == 0
+                                          ? "Pilih rating"
+                                          : rating == 1
+                                          ? "Buruk"
+                                          : rating == 2
+                                          ? "Kurang"
+                                          : rating == 3
+                                          ? "Cukup"
+                                          : rating == 4
+                                          ? "Baik"
+                                          : "Sangat Baik",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: rating == 0
+                                            ? Colors.grey[500]
+                                            : Colors.grey[800],
+                                      ),
+                                    ),
+                                    if (rating > 0)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          "$rating / 5",
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // COMMENT
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Tambah komentar",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: TextField(
+                                  controller: commentCtrl,
+                                  maxLines: 4,
+                                  decoration: const InputDecoration(
+                                    hintText:
+                                        "Bagikan pengalaman Anda dengan produk ini...",
+                                    hintStyle: TextStyle(color: Colors.grey),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                  ),
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // BUTTONS
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(dialogContext),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  side: BorderSide(color: Colors.grey[300]!),
+                                ),
+                                child: Text(
+                                  "Nanti Saja",
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: rating == 0
+                                    ? null
+                                    : () async {
+                                        await ReviewService().submitReview(
+                                          productId: productId,
+                                          transactionId: transactionId,
+                                          rating: rating,
+                                          comment: commentCtrl.text,
+                                        );
+
+                                        await fetchOrders();
+                                        if (mounted) {
+                                          Navigator.pop(dialogContext);
+                                        }
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  backgroundColor: rating == 0
+                                      ? Colors.grey[300]
+                                      : const Color(0xFF00C853),
+                                  elevation: 0,
+                                  shadowColor: Colors.transparent,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Icon(
+                                      Icons.send_rounded,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      "Kirim Ulasan",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// === UI CARD PESANAN + TOMBOL REVIEW ===
   Widget buildOrderCard(Map<String, dynamic> order) {
     final details = (order['details'] is List) ? order['details'] as List : [];
     final firstDetail = details.isNotEmpty
         ? details[0] as Map<String, dynamic>
         : {};
     final product = firstDetail['product'] ?? {};
+    final hasReview = firstDetail['has_review'] == true;
+
     final productName = product['name'] ?? 'Produk tidak diketahui';
     final imageUrl =
         product['image_url'] ??
         resolveImageUrl(product['image']) ??
         resolveImageUrl(product['photo']);
-    final qty = details.fold<int>(
-      0,
-      (prev, d) => prev + (int.tryParse(d['qty'].toString()) ?? 0),
-    );
-
     final trx = extractTransactionCode(order);
     final date = extractDate(order);
     final total = order['total'] ?? order['grand_total'] ?? 0;
     final status = (order['status'] ?? '-').toString();
+    final qty = details.fold<int>(
+      0,
+      (prev, d) => prev + (int.tryParse(d['qty'].toString()) ?? 0),
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -173,7 +485,7 @@ class _OrderListPageState extends State<OrderListPage> {
             BoxShadow(
               color: Colors.black12,
               blurRadius: 12,
-              offset: const Offset(0, 6),
+              offset: Offset(0, 6),
             ),
           ],
         ),
@@ -182,7 +494,6 @@ class _OrderListPageState extends State<OrderListPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header tanggal + qty
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -195,16 +506,19 @@ class _OrderListPageState extends State<OrderListPage> {
               ),
               const SizedBox(height: 10),
 
-              // Gambar + Detail
+              /// IMAGE + DETAIL PRODUK
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      width: 88,
-                      height: 88,
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
                       color: Colors.grey[200],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
                       child: imageUrl.toString().isNotEmpty
                           ? Image.network(
                               imageUrl,
@@ -214,6 +528,23 @@ class _OrderListPageState extends State<OrderListPage> {
                                 size: 36,
                                 color: Colors.grey,
                               ),
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value:
+                                            loadingProgress
+                                                    .expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                            : null,
+                                      ),
+                                    );
+                                  },
                             )
                           : const Icon(
                               Icons.image_outlined,
@@ -237,12 +568,9 @@ class _OrderListPageState extends State<OrderListPage> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 6),
-                        Text(
+                        const Text(
                           'Nomor Orderan:',
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 13,
-                          ),
+                          style: TextStyle(color: Colors.black54, fontSize: 13),
                         ),
                         Text(
                           trx,
@@ -252,12 +580,9 @@ class _OrderListPageState extends State<OrderListPage> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
+                        const Text(
                           'Total Keseluruhan:',
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 13,
-                          ),
+                          style: TextStyle(color: Colors.black54, fontSize: 13),
                         ),
                         Text(
                           formatCurrency(total),
@@ -275,7 +600,6 @@ class _OrderListPageState extends State<OrderListPage> {
               ),
               const SizedBox(height: 14),
 
-              // Tombol Batalkan (kalau masih Diproses)
               if (status.toLowerCase() == 'diproses')
                 OutlinedButton(
                   onPressed: () => _showCancelDialog(order['id']),
@@ -290,6 +614,25 @@ class _OrderListPageState extends State<OrderListPage> {
                     style: TextStyle(color: Colors.green),
                   ),
                 ),
+
+              /// 🌟 TOMBOL REVIEW (MUNCUL SEKALI SAJA)
+              if ((status.toLowerCase() == 'diterima' ||
+                      status.toLowerCase() == 'selesai') &&
+                  !hasReview)
+                OutlinedButton(
+                  onPressed: () =>
+                      _showReviewDialog(product['id'], order['id']),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.orange),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  child: const Text(
+                    'Beri Ulasan',
+                    style: TextStyle(color: Colors.orange),
+                  ),
+                ),
             ],
           ),
         ),
@@ -297,6 +640,7 @@ class _OrderListPageState extends State<OrderListPage> {
     );
   }
 
+  /// KONFIRMASI CANCEL
   Future<void> _showCancelDialog(int id) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -322,6 +666,7 @@ class _OrderListPageState extends State<OrderListPage> {
     }
   }
 
+  /// CATEGORY FILTER CHIP
   Widget buildFilterChips() {
     final chips = [
       'Semua',
@@ -388,7 +733,7 @@ class _OrderListPageState extends State<OrderListPage> {
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.15),
-                      offset: const Offset(0, 3),
+                      offset: Offset(0, 3),
                       blurRadius: 6,
                     ),
                   ],

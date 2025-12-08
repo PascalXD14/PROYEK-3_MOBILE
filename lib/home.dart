@@ -167,6 +167,14 @@ class _HomePageState extends State<HomePage> {
                       itemCount: products.length,
                       itemBuilder: (context, index) {
                         final product = products[index];
+
+                        // 🔥 Ambil rating dengan aman (bisa num / string / null)
+                        final dynamic ratingRaw = product['reviews_avg_rating'];
+                        final double avgRating = ratingRaw is num
+                            ? ratingRaw.toDouble()
+                            : double.tryParse(ratingRaw?.toString() ?? "0") ??
+                                  0;
+
                         return GestureDetector(
                           onTap: () {
                             Navigator.push(
@@ -247,7 +255,7 @@ class _HomePageState extends State<HomePage> {
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            "4.5 • ${product['sold'] ?? 0} terjual",
+                                            "${avgRating.toStringAsFixed(1)} • ${product['sold'] ?? 0} terjual",
                                             style: const TextStyle(
                                               color: Colors.black54,
                                               fontSize: 12,

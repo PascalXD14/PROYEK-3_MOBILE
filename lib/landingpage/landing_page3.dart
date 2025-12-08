@@ -11,16 +11,18 @@ class LandingPage3 extends StatelessWidget {
       final guestData = await authService.guestLogin();
       debugPrint("Guest login berhasil: $guestData");
 
-      if (context.mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const HomePage(userData: null),
-          ),
-        );
-      }
+      if (!context.mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage(userData: null)),
+      );
     } catch (e) {
       debugPrint("Gagal login sebagai guest: $e");
+
+      // di sini juga cek dulu
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Gagal masuk sebagai tamu")));

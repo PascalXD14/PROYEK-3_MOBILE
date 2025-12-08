@@ -18,7 +18,6 @@ class CartContent extends StatelessWidget {
 
   String getFullImageUrl(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) return "";
-    // gunakan ApiConfig.baseUrl (tanpa '/api') untuk path file gambar jika perlu
     return "${ApiConfig.baseUrl.replaceFirst('/api', '')}/$imagePath";
   }
 

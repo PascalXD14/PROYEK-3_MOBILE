@@ -1,4 +1,3 @@
-// lib/cart/cart_page.dart
 import 'package:flutter/material.dart';
 import '../services/cart_service.dart';
 import 'cart_content.dart';

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/api_config.dart';
+import '../chat/chat.dart';
+import '../chat/notifikasi.dart';
 
 class CustomHeader extends StatelessWidget {
   const CustomHeader({Key? key}) : super(key: key);
@@ -12,36 +14,53 @@ class CustomHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          GestureDetector(
-            onTap: () async {
-              final auth = AuthService();
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () async {
+                  final auth = AuthService();
 
-              final token = await auth.getToken();
-              final myUserId = await auth.getUserId();
+                  final token = await auth.getToken();
+                  final myUserId = await auth.getUserId();
 
-              if (token == null || myUserId == null) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Silakan login terlebih dahulu'),
-                  ),
-                );
-                return;
-              }
+                  if (token == null || myUserId == null) {
+                    if (!context.mounted) return;
 
-              if (!context.mounted) return;
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Silakan login terlebih dahulu'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  if (!context.mounted) return;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ChatPage()),
+                  );
+                },
+                child: const Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(Icons.chat_bubble_outline, size: 30),
+                ),
               ),
-              padding: const EdgeInsets.all(6),
-              child: const Icon(
-                Icons.chat_bubble_outline,
-                size: 30,
-                color: Colors.black87,
+
+              // 🔔 Notifikasi (Baru ditambah)
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const NotificationPage()),
+                  );
+                },
+                child: const Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(Icons.notifications_none, size: 30),
+                ),
               ),
-            ),
+            ],
           ),
 
           // Logo

@@ -186,4 +186,29 @@ class OrderService {
       );
     }
   }
+
+  // 👇 Tambahan khusus untuk ulasan
+  Future<void> sendReview({
+    required int productId,
+    required int transactionId,
+    required double rating,
+    required String comment,
+  }) async {
+    final token = await _storage.getToken();
+    if (token == null) throw Exception("User belum login");
+
+    await http.post(
+      ApiConfig.endpoint('reviews'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'product_id': productId,
+        'transaction_id': transactionId,
+        'rating': rating,
+        'comment': comment,
+      }),
+    );
+  }
 }

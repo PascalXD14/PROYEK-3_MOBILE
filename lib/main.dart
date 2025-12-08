@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'landingpage/landing_page1.dart';
 import 'entry/login.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'home.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); 
+  await initializeDateFormatting(
+    'id_ID',
+    null,
+  ); 
+
   runApp(const MyApp());
 }
 
@@ -16,7 +23,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'SPARE-M',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const LandingPage(), // ✅ ganti halaman awal di sini
+      home: const LandingPage(),
       routes: {
         '/login': (context) => const LoginPage(),
         '/home': (context) => const HomePage(),

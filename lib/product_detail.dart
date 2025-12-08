@@ -17,7 +17,6 @@ class ProductDetailPage extends StatefulWidget {
 }
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
-  // Ganti ApiService -> ProductService + CartService (compatible)
   final ProductService productService = ProductService();
   final CartService cartService = CartService();
 
@@ -25,7 +24,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   int? _userId;
   String? _role;
 
-  // listener reference supaya bisa di-remove di dispose()
   late VoidCallback _productDetailRefreshListener;
 
   @override
@@ -34,7 +32,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     _product = productService.getProductDetail(widget.productId);
     _loadUserData();
 
-    // listener untuk reload product detail saat notifier berubah
     _productDetailRefreshListener = () {
       if (!mounted) return;
       setState(() {
@@ -88,6 +85,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             final harga = product['price'] is int
                 ? product['price']
                 : int.tryParse(product['price'].toString()) ?? 0;
+
+            // 🟨 Ambil daftar ulasan untuk preview (max 2 ditampilkan)
+            final List reviews = product['reviews_preview'] is List
+                ? (product['reviews_preview'] as List)
+                : [];
 
             return SingleChildScrollView(
               child: Column(
@@ -179,6 +181,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           ),
                         ),
                         const SizedBox(height: 6),
+
+                        // ⭐ Rating + Terjual
                         Row(
                           children: [
                             const Icon(
@@ -188,11 +192,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              "4.5 • ${product['sold'] ?? 0} terjual",
+                              "${product['reviews_avg_rating'] ?? 0} • ${product['sold'] ?? 0} terjual",
                               style: const TextStyle(color: Colors.black54),
                             ),
                           ],
                         ),
+
                         const SizedBox(height: 10),
                         Text(
                           formatRupiah.format(harga),
@@ -233,7 +238,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     ),
                   ),
 
-                  // === ULASAN PELANGGAN ===
+                  // === ULASAN PELANGGAN + PREVIEW ===
                   InkWell(
                     onTap: () {
                       Navigator.push(
@@ -251,21 +256,80 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         horizontal: 16,
                         vertical: 14,
                       ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "Ulasan Pelanggan",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: const [
+                              Text(
+                                "Ulasan Pelanggan",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 18,
+                                color: Colors.black54,
+                              ),
+                            ],
                           ),
-                          Icon(
-                            Icons.arrow_forward_ios,
-                            size: 18,
-                            color: Colors.black54,
-                          ),
+                          const SizedBox(height: 10),
+
+                          // 🔥 PREVIEW MAX 2 REVIEW
+                          if (reviews.isNotEmpty)
+                            ...reviews.take(2).map<Widget>((r) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          r['user'] ?? 'Pengguna',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        Row(
+                                          children: List.generate(5, (i) {
+                                            return Icon(
+                                              i < (r['rating'] ?? 0)
+                                                  ? Icons.star
+                                                  : Icons.star_border,
+                                              color: Colors.amber,
+                                              size: 16,
+                                            );
+                                          }),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      r['comment'] ?? "",
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      r['created_at'] ?? "",
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.black45,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
                         ],
                       ),
                     ),
@@ -279,7 +343,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         ),
       ),
 
-      // === TOMBOL BAWAH ===
+      // === BOTTOM BAR ===
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: const BoxDecoration(
@@ -288,7 +352,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         ),
         child: Row(
           children: [
-            // Tombol chat kiri
+            // 🛑 Chat (Hanya Setelah Login)
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -312,7 +376,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
             const SizedBox(width: 8),
 
-            //  Tombol Beli Langsung
+            // 🟢 BUY BUTTON
             Expanded(
               flex: 1,
               child: ElevatedButton(
@@ -358,7 +422,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
             const SizedBox(width: 8),
 
-            //  Tombol Tambah Keranjang
+            // 🛒 ADD TO CART
             Expanded(
               flex: 1,
               child: ElevatedButton.icon(
