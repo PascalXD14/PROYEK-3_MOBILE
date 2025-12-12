@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import '../services/chat_service.dart';
 import '../models/chat_message.dart';
@@ -33,8 +32,6 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _init() async {
     _myId = await _storage.getUserId();
     await _loadMessages();
-
-    // polling tiap 3 detik, sama kaya versi web
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _loadMessages());
   }
 
@@ -170,7 +167,7 @@ class _ChatPageState extends State<ChatPage> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Admin online',
+                        'Admin',
                         style: TextStyle(
                           color: Colors.green[700],
                           fontWeight: FontWeight.w500,
@@ -292,73 +289,247 @@ class _ChatPageState extends State<ChatPage> {
                                               left: isMe ? 0 : 8,
                                               right: isMe ? 8 : 0,
                                             ),
-                                            padding: const EdgeInsets.all(12),
-                                            decoration: BoxDecoration(
-                                              color: isMe
-                                                  ? Colors.green[600]
-                                                  : Colors.white,
-                                              borderRadius: BorderRadius.only(
-                                                topLeft: const Radius.circular(
-                                                  16,
-                                                ),
-                                                topRight: const Radius.circular(
-                                                  16,
-                                                ),
-                                                bottomLeft: Radius.circular(
-                                                  isMe ? 16 : 4,
-                                                ),
-                                                bottomRight: Radius.circular(
-                                                  isMe ? 4 : 16,
-                                                ),
-                                              ),
-                                              boxShadow: isMe
-                                                  ? [
-                                                      BoxShadow(
-                                                        color:
-                                                            Colors.green[200]!,
-                                                        blurRadius: 4,
-                                                        offset: const Offset(
-                                                          0,
-                                                          2,
-                                                        ),
-                                                      ),
-                                                    ]
-                                                  : [
-                                                      BoxShadow(
-                                                        color:
-                                                            Colors.grey[200]!,
-                                                        blurRadius: 4,
-                                                        offset: const Offset(
-                                                          0,
-                                                          2,
-                                                        ),
-                                                      ),
-                                                    ],
-                                            ),
                                             child: Column(
                                               crossAxisAlignment: isMe
                                                   ? CrossAxisAlignment.end
                                                   : CrossAxisAlignment.start,
                                               children: [
-                                                Text(
-                                                  msg.body,
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: isMe
-                                                        ? Colors.white
-                                                        : Colors.grey[800],
-                                                    height: 1.4,
+                                                // ======== 🔥 PRODUCT CARD IF AVAILABLE ========
+                                                if (msg.productId != null)
+                                                  Container(
+                                                    width: 220,
+                                                    margin:
+                                                        const EdgeInsets.only(
+                                                          bottom: 8,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: isMe
+                                                          ? Colors.green[600]
+                                                          : Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            16,
+                                                          ),
+                                                      boxShadow: isMe
+                                                          ? [
+                                                              BoxShadow(
+                                                                color: Colors
+                                                                    .green[200]!,
+                                                                blurRadius: 4,
+                                                                offset:
+                                                                    const Offset(
+                                                                      0,
+                                                                      2,
+                                                                    ),
+                                                              ),
+                                                            ]
+                                                          : [
+                                                              BoxShadow(
+                                                                color: Colors
+                                                                    .grey[200]!,
+                                                                blurRadius: 4,
+                                                                offset:
+                                                                    const Offset(
+                                                                      0,
+                                                                      2,
+                                                                    ),
+                                                              ),
+                                                            ],
+                                                    ),
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                          10,
+                                                        ),
+                                                    child: Row(
+                                                      children: [
+                                                        ClipRRect(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10,
+                                                              ),
+                                                          child: Image.network(
+                                                            msg.productImage ??
+                                                                '',
+                                                            width: 55,
+                                                            height: 55,
+                                                            fit: BoxFit.cover,
+                                                            errorBuilder:
+                                                                (
+                                                                  c,
+                                                                  e,
+                                                                  s,
+                                                                ) => Container(
+                                                                  width: 55,
+                                                                  height: 55,
+                                                                  color: Colors
+                                                                      .grey[300],
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 10,
+                                                        ),
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              Text(
+                                                                msg.productName ??
+                                                                    '',
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                                style: TextStyle(
+                                                                  fontSize: 13,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: isMe
+                                                                      ? Colors
+                                                                            .white
+                                                                      : Colors
+                                                                            .black87,
+                                                                ),
+                                                              ),
+                                                              Text(
+                                                                "Rp ${msg.productPrice ?? ''}",
+                                                                style: TextStyle(
+                                                                  fontSize: 12,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  color: isMe
+                                                                      ? Colors
+                                                                            .white70
+                                                                      : Colors
+                                                                            .green[800],
+                                                                ),
+                                                              ),
+                                                              const SizedBox(
+                                                                height: 3,
+                                                              ),
+                                                              GestureDetector(
+                                                                onTap: () {
+                                                                  Navigator.pushNamed(
+                                                                    context,
+                                                                    '/product-detail',
+                                                                    arguments: msg
+                                                                        .productId,
+                                                                  );
+                                                                },
+                                                                child: Text(
+                                                                  "Lihat Produk",
+                                                                  style: TextStyle(
+                                                                    fontSize:
+                                                                        11,
+                                                                    decoration:
+                                                                        TextDecoration
+                                                                            .underline,
+                                                                    color: isMe
+                                                                        ? Colors
+                                                                              .white
+                                                                        : Colors
+                                                                              .blue[700],
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Text(
-                                                  _formatTime(msg.createdAt),
-                                                  style: TextStyle(
-                                                    fontSize: 10,
+
+                                                // ======== 💬 NORMAL TEXT BUBBLE ========
+                                                Container(
+                                                  padding: const EdgeInsets.all(
+                                                    12,
+                                                  ),
+                                                  decoration: BoxDecoration(
                                                     color: isMe
-                                                        ? Colors.green[100]
-                                                        : Colors.grey[500],
-                                                    fontWeight: FontWeight.w500,
+                                                        ? Colors.green[600]
+                                                        : Colors.white,
+                                                    borderRadius: BorderRadius.only(
+                                                      topLeft:
+                                                          const Radius.circular(
+                                                            16,
+                                                          ),
+                                                      topRight:
+                                                          const Radius.circular(
+                                                            16,
+                                                          ),
+                                                      bottomLeft:
+                                                          Radius.circular(
+                                                            isMe ? 16 : 4,
+                                                          ),
+                                                      bottomRight:
+                                                          Radius.circular(
+                                                            isMe ? 4 : 16,
+                                                          ),
+                                                    ),
+                                                    boxShadow: isMe
+                                                        ? [
+                                                            BoxShadow(
+                                                              color: Colors
+                                                                  .green[200]!,
+                                                              blurRadius: 4,
+                                                              offset:
+                                                                  const Offset(
+                                                                    0,
+                                                                    2,
+                                                                  ),
+                                                            ),
+                                                          ]
+                                                        : [
+                                                            BoxShadow(
+                                                              color: Colors
+                                                                  .grey[200]!,
+                                                              blurRadius: 4,
+                                                              offset:
+                                                                  const Offset(
+                                                                    0,
+                                                                    2,
+                                                                  ),
+                                                            ),
+                                                          ],
+                                                  ),
+                                                  child: Column(
+                                                    crossAxisAlignment: isMe
+                                                        ? CrossAxisAlignment.end
+                                                        : CrossAxisAlignment
+                                                              .start,
+                                                    children: [
+                                                      Text(
+                                                        msg.body,
+                                                        style: TextStyle(
+                                                          fontSize: 14,
+                                                          color: isMe
+                                                              ? Colors.white
+                                                              : Colors
+                                                                    .grey[800],
+                                                          height: 1.4,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 6),
+                                                      Text(
+                                                        _formatTime(
+                                                          msg.createdAt,
+                                                        ),
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          color: isMe
+                                                              ? Colors
+                                                                    .green[100]
+                                                              : Colors
+                                                                    .grey[500],
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
                                               ],

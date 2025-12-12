@@ -1,5 +1,10 @@
 class ApiConfig {
-  static const String baseUrl = 'http://192.168.1.14:8000/api';
+  static const String baseUrl = 'http://192.168.100.85:8000/api';
+
+  // MIDTRANS CONFIG (TAMBAHKAN KODE INI)
+  static const String midtransClientKey = "SB-Mid-client-gdbkHN9762-zrf0a";
+  static const String midtransMerchantBaseUrl =
+      "https://nonnatty-nonprofitablely-haley.ngrok-free.dev/";
 
   static Uri endpoint(String path) => Uri.parse('$baseUrl/$path');
 

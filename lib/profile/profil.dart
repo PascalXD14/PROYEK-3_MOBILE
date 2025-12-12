@@ -1,4 +1,3 @@
-// lib/profile/profil.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +7,7 @@ import '../services/auth_service.dart';
 import '../entry/login.dart';
 import '../widgets/navbar.dart';
 import 'pengaturan_akun.dart';
+import 'hapus_akun.dart';
 
 class ProfilePage extends StatefulWidget {
   final int userId;
@@ -663,7 +663,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     icon: Icons.delete_outline_rounded,
                     text: 'Hapus Akun',
                     color: const Color(0xFFEF4444),
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              DeleteAccountPage(userId: widget.userId),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

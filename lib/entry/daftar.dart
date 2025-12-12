@@ -38,11 +38,9 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isLoading = true);
 
     try {
-      // sanitize email: ubah koma jadi titik, hapus spasi
       final rawEmail = _emailController.text.trim();
       final sanitizedEmail = rawEmail.replaceAll(',', '.').replaceAll(' ', '');
 
-      // map gender ke nilai backend (male/female/other)
       String genderForBackend = 'other';
       if (_selectedGender != null) {
         final s = _selectedGender!.toLowerCase();

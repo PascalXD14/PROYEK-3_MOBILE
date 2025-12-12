@@ -5,6 +5,7 @@ import 'review_list_page.dart';
 import '../checkout/checkout_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import '../services/chat_service.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final int productId;
@@ -59,6 +60,49 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     });
   }
 
+  // ========================= CHAT OPTIONS ========================= //
+
+  Widget _chatOptionSheet(Map<String, dynamic> product) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            "Pilih Pertanyaan",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          _chatOption("Apakah produk ini tersedia?", product),
+          _chatOption("Apakah bisa dikirim hari ini?", product),
+          _chatOption("Saya ingin bertanya lebih lanjut", product),
+        ],
+      ),
+    );
+  }
+
+  Widget _chatOption(String text, Map<String, dynamic> product) {
+    return ListTile(
+      title: Text(text),
+      leading: const Icon(Icons.help_outline),
+      onTap: () async {
+        await ChatService().sendMessage(
+          text,
+          productId: widget.productId,
+          productName: product['name'],
+          productPrice: product['price'],
+          productImage: product['image_url'],
+        );
+
+        if (!mounted) return;
+        Navigator.pop(context);
+        Navigator.pushNamed(context, '/chat');
+      },
+    );
+  }
+
+  // ========================= BUILD UI ========================= //
+
   @override
   Widget build(BuildContext context) {
     final formatRupiah = NumberFormat.currency(
@@ -86,7 +130,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 ? product['price']
                 : int.tryParse(product['price'].toString()) ?? 0;
 
-            // 🟨 Ambil daftar ulasan untuk preview (max 2 ditampilkan)
             final List reviews = product['reviews_preview'] is List
                 ? (product['reviews_preview'] as List)
                 : [];
@@ -121,35 +164,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           ),
                           onPressed: () {},
                         ),
-                        Container(
-                          width: 130,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.black26),
-                          ),
-                          child: const TextField(
-                            decoration: InputDecoration(
-                              hintText: "Cari...",
-                              hintStyle: TextStyle(
-                                color: Colors.black45,
-                                fontSize: 13,
-                              ),
-                              prefixIcon: Icon(
-                                Icons.search,
-                                color: Colors.black45,
-                                size: 20,
-                              ),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.only(
-                                top: 8,
-                                left: 4,
-                                right: 4,
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -182,7 +196,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ),
                         const SizedBox(height: 6),
 
-                        // ⭐ Rating + Terjual
                         Row(
                           children: [
                             const Icon(
@@ -238,7 +251,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     ),
                   ),
 
-                  // === ULASAN PELANGGAN + PREVIEW ===
+                  // === ULASAN PELANGGAN ===
                   InkWell(
                     onTap: () {
                       Navigator.push(
@@ -277,8 +290,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             ],
                           ),
                           const SizedBox(height: 10),
-
-                          // 🔥 PREVIEW MAX 2 REVIEW
                           if (reviews.isNotEmpty)
                             ...reviews.take(2).map<Widget>((r) {
                               return Padding(
@@ -352,7 +363,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         ),
         child: Row(
           children: [
-            // 🛑 Chat (Hanya Setelah Login)
+            // ========== CHAT BUTTON ========== //
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -364,19 +375,37 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   Icons.chat_bubble_outline,
                   color: Colors.green,
                 ),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Silakan login terlebih dahulu."),
-                      backgroundColor: Colors.orange,
+                onPressed: () async {
+                  if (_role == 'guest' || _userId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Silakan login terlebih dahulu."),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                    return;
+                  }
+
+                  final product = await _product;
+
+                  showModalBottomSheet(
+                    context: context,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
                     ),
+                    builder: (context) {
+                      return _chatOptionSheet(product);
+                    },
                   );
                 },
               ),
             ),
+
             const SizedBox(width: 8),
 
-            // 🟢 BUY BUTTON
+            // ========== BELI SEKARANG ==========
             Expanded(
               flex: 1,
               child: ElevatedButton(
@@ -420,9 +449,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 ),
               ),
             ),
+
             const SizedBox(width: 8),
 
-            // 🛒 ADD TO CART
+            // ========== TAMBAH KERANJANG ==========
             Expanded(
               flex: 1,
               child: ElevatedButton.icon(

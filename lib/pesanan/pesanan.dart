@@ -17,8 +17,13 @@ class OrderListPage extends StatefulWidget {
 class _OrderListPageState extends State<OrderListPage> {
   final OrderService orderService = OrderService();
   List<dynamic> orders = [];
+  List<dynamic> filteredOrders = [];
+
   bool isLoading = true;
   String activeFilter = 'Semua';
+
+  TextEditingController searchController = TextEditingController();
+  String searchQuery = "";
 
   final currency = NumberFormat.currency(
     locale: 'id_ID',
@@ -36,7 +41,10 @@ class _OrderListPageState extends State<OrderListPage> {
     setState(() => isLoading = true);
     try {
       final response = await orderService.getOrders();
-      setState(() => orders = response);
+      setState(() {
+        orders = response;
+        filteredOrders = response;
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -47,6 +55,52 @@ class _OrderListPageState extends State<OrderListPage> {
       if (mounted) setState(() => isLoading = false);
     }
   }
+
+  // ============================
+  // SEARCH BAR FUNCTION
+  // ============================
+  void applySearchFilter() {
+    final q = searchQuery.toLowerCase();
+
+    List<dynamic> baseList = orders;
+
+    // apply status filter
+    if (activeFilter != 'Semua') {
+      baseList = baseList.where((order) {
+        final status = (order['status'] ?? "").toString().toLowerCase();
+        return status == activeFilter.toLowerCase();
+      }).toList();
+    }
+
+    // apply search query
+    setState(() {
+      filteredOrders = baseList.where((order) {
+        final details = order['details'] as List<dynamic>? ?? [];
+        final firstDetail = details.isNotEmpty
+            ? details[0] as Map<String, dynamic>
+            : {};
+        final product = firstDetail['product'] ?? {};
+
+        final productName = (product['name'] ?? "").toString().toLowerCase();
+        final trx = extractTransactionCode(order).toLowerCase();
+        final total = formatCurrency(
+          order['total'] ?? order['grand_total'] ?? 0,
+        ).toLowerCase();
+        final status = (order['status'] ?? "").toString().toLowerCase();
+        final date = extractDate(order).toLowerCase();
+
+        return productName.contains(q) ||
+            trx.contains(q) ||
+            total.contains(q) ||
+            status.contains(q) ||
+            date.contains(q);
+      }).toList();
+    });
+  }
+
+  // ============================
+  // HELPER METHODS
+  // ============================
 
   String extractTransactionCode(Map<String, dynamic> order) {
     return order['transaction_code'] ??
@@ -73,6 +127,14 @@ class _OrderListPageState extends State<OrderListPage> {
     } catch (_) {
       return amount.toString();
     }
+  }
+
+  String resolveImageUrl(dynamic field) {
+    if (field == null) return '';
+    final s = field.toString();
+    if (s.startsWith('http')) return s;
+    final base = ApiConfig.baseUrl.replaceFirst(RegExp(r'/api$'), '');
+    return '$base/${s.replaceFirst(RegExp(r"^/"), "")}';
   }
 
   Widget buildStatusPill(String status) {
@@ -129,330 +191,10 @@ class _OrderListPageState extends State<OrderListPage> {
     );
   }
 
-  String resolveImageUrl(dynamic field) {
-    if (field == null) return '';
-    final s = field.toString();
-    if (s.startsWith('http')) return s;
-    final base = ApiConfig.baseUrl.replaceFirst(RegExp(r'/api$'), '');
-    return '$base/${s.replaceFirst(RegExp(r"^/"), "")}';
-  }
+  // ============================
+  // CARD UI
+  // ============================
 
-  List<dynamic> getFilteredOrders() {
-    if (activeFilter == 'Semua') return orders;
-    return orders.where((o) {
-      final st = (o['status'] ?? '').toString().toLowerCase();
-      return st == activeFilter.toLowerCase();
-    }).toList();
-  }
-
-  /// 🌟 === DIALOG REVIEW ===
-  Future<void> _showReviewDialog(int productId, int transactionId) async {
-    double rating = 0;
-    final TextEditingController commentCtrl = TextEditingController();
-
-    await showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Dialog(
-              insetPadding: const EdgeInsets.symmetric(horizontal: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              backgroundColor: Colors.white,
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 400),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // HEADER
-                        Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.orange.shade300,
-                                    Colors.amber.shade500,
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.star_rate_rounded,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Beri Ulasan",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey[800],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    "Bagikan pengalaman Anda",
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // RATING SECTION
-                        Center(
-                          child: Column(
-                            children: [
-                              Text(
-                                "Bagaimana pengalaman Anda?",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[50],
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.grey.shade200,
-                                  ),
-                                ),
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: List.generate(5, (i) {
-                                        return GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              rating = (i + 1).toDouble();
-                                            });
-                                          },
-                                          child: AnimatedContainer(
-                                            duration: const Duration(
-                                              milliseconds: 200,
-                                            ),
-                                            margin: const EdgeInsets.symmetric(
-                                              horizontal: 4,
-                                            ),
-                                            child: Icon(
-                                              i < rating
-                                                  ? Icons.star_rounded
-                                                  : Icons.star_outline_rounded,
-                                              color: i < rating
-                                                  ? Colors.amber
-                                                  : Colors.grey[400],
-                                              size: 40,
-                                            ),
-                                          ),
-                                        );
-                                      }),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      rating == 0
-                                          ? "Pilih rating"
-                                          : rating == 1
-                                          ? "Buruk"
-                                          : rating == 2
-                                          ? "Kurang"
-                                          : rating == 3
-                                          ? "Cukup"
-                                          : rating == 4
-                                          ? "Baik"
-                                          : "Sangat Baik",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: rating == 0
-                                            ? Colors.grey[500]
-                                            : Colors.grey[800],
-                                      ),
-                                    ),
-                                    if (rating > 0)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: Text(
-                                          "$rating / 5",
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // COMMENT
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Tambah komentar",
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.grey.shade200),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                child: TextField(
-                                  controller: commentCtrl,
-                                  maxLines: 4,
-                                  decoration: const InputDecoration(
-                                    hintText:
-                                        "Bagikan pengalaman Anda dengan produk ini...",
-                                    hintStyle: TextStyle(color: Colors.grey),
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                  ),
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        // BUTTONS
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => Navigator.pop(dialogContext),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  side: BorderSide(color: Colors.grey[300]!),
-                                ),
-                                child: Text(
-                                  "Nanti Saja",
-                                  style: TextStyle(
-                                    color: Colors.grey[700],
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: rating == 0
-                                    ? null
-                                    : () async {
-                                        await ReviewService().submitReview(
-                                          productId: productId,
-                                          transactionId: transactionId,
-                                          rating: rating,
-                                          comment: commentCtrl.text,
-                                        );
-
-                                        await fetchOrders();
-                                        if (mounted) {
-                                          Navigator.pop(dialogContext);
-                                        }
-                                      },
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  backgroundColor: rating == 0
-                                      ? Colors.grey[300]
-                                      : const Color(0xFF00C853),
-                                  elevation: 0,
-                                  shadowColor: Colors.transparent,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(
-                                      Icons.send_rounded,
-                                      size: 18,
-                                      color: Colors.white,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      "Kirim Ulasan",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  /// === UI CARD PESANAN + TOMBOL REVIEW ===
   Widget buildOrderCard(Map<String, dynamic> order) {
     final details = (order['details'] is List) ? order['details'] as List : [];
     final firstDetail = details.isNotEmpty
@@ -506,7 +248,6 @@ class _OrderListPageState extends State<OrderListPage> {
               ),
               const SizedBox(height: 10),
 
-              /// IMAGE + DETAIL PRODUK
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -520,32 +261,7 @@ class _OrderListPageState extends State<OrderListPage> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: imageUrl.toString().isNotEmpty
-                          ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, e, s) => const Icon(
-                                Icons.image_not_supported,
-                                size: 36,
-                                color: Colors.grey,
-                              ),
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Center(
-                                      child: CircularProgressIndicator(
-                                        value:
-                                            loadingProgress
-                                                    .expectedTotalBytes !=
-                                                null
-                                            ? loadingProgress
-                                                      .cumulativeBytesLoaded /
-                                                  loadingProgress
-                                                      .expectedTotalBytes!
-                                            : null,
-                                      ),
-                                    );
-                                  },
-                            )
+                          ? Image.network(imageUrl, fit: BoxFit.cover)
                           : const Icon(
                               Icons.image_outlined,
                               size: 36,
@@ -554,23 +270,24 @@ class _OrderListPageState extends State<OrderListPage> {
                     ),
                   ),
                   const SizedBox(width: 12),
+
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           productName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 15.5,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 6),
                         const Text(
                           'Nomor Orderan:',
-                          style: TextStyle(color: Colors.black54, fontSize: 13),
+                          style: TextStyle(color: Colors.black54),
                         ),
                         Text(
                           trx,
@@ -582,7 +299,7 @@ class _OrderListPageState extends State<OrderListPage> {
                         const SizedBox(height: 4),
                         const Text(
                           'Total Keseluruhan:',
-                          style: TextStyle(color: Colors.black54, fontSize: 13),
+                          style: TextStyle(color: Colors.black54),
                         ),
                         Text(
                           formatCurrency(total),
@@ -594,10 +311,12 @@ class _OrderListPageState extends State<OrderListPage> {
                       ],
                     ),
                   ),
+
                   const SizedBox(width: 8),
                   buildStatusPill(status),
                 ],
               ),
+
               const SizedBox(height: 14),
 
               if (status.toLowerCase() == 'diproses')
@@ -605,9 +324,6 @@ class _OrderListPageState extends State<OrderListPage> {
                   onPressed: () => _showCancelDialog(order['id']),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.green),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
                   ),
                   child: const Text(
                     'Batalkan Pesanan',
@@ -615,7 +331,6 @@ class _OrderListPageState extends State<OrderListPage> {
                   ),
                 ),
 
-              /// 🌟 TOMBOL REVIEW (MUNCUL SEKALI SAJA)
               if ((status.toLowerCase() == 'diterima' ||
                       status.toLowerCase() == 'selesai') &&
                   !hasReview)
@@ -624,9 +339,6 @@ class _OrderListPageState extends State<OrderListPage> {
                       _showReviewDialog(product['id'], order['id']),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.orange),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
                   ),
                   child: const Text(
                     'Beri Ulasan',
@@ -640,7 +352,204 @@ class _OrderListPageState extends State<OrderListPage> {
     );
   }
 
-  /// KONFIRMASI CANCEL
+  // ============================
+  // REVIEW DIALOG (ORIGINAL WORKING)
+  // ============================
+
+  Future<void> _showReviewDialog(int productId, int transactionId) async {
+    double rating = 0;
+    final TextEditingController commentCtrl = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(horizontal: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              backgroundColor: Colors.white,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.orange.shade300,
+                                    Colors.amber.shade500,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.star_rate_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Beri Ulasan",
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[800],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "Bagikan pengalaman Anda",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        Center(
+                          child: Column(
+                            children: [
+                              Text(
+                                "Bagaimana pengalaman Anda?",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(5, (i) {
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        rating = (i + 1).toDouble();
+                                      });
+                                    },
+                                    child: Icon(
+                                      i < rating
+                                          ? Icons.star_rounded
+                                          : Icons.star_outline_rounded,
+                                      color: i < rating
+                                          ? Colors.amber
+                                          : Colors.grey[400],
+                                      size: 40,
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        Text(
+                          "Tambah komentar",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: TextField(
+                              controller: commentCtrl,
+                              maxLines: 4,
+                              decoration: const InputDecoration(
+                                hintText:
+                                    "Bagikan pengalaman Anda dengan produk ini...",
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(dialogContext),
+                                child: const Text("Nanti Saja"),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: rating == 0
+                                    ? null
+                                    : () async {
+                                        await ReviewService().submitReview(
+                                          productId: productId,
+                                          transactionId: transactionId,
+                                          rating: rating,
+                                          comment: commentCtrl.text,
+                                        );
+
+                                        await fetchOrders();
+                                        if (mounted) {
+                                          Navigator.pop(dialogContext);
+                                        }
+                                      },
+                                child: const Text("Kirim Ulasan"),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ============================
+  // CANCEL ORDER
+  // ============================
+
   Future<void> _showCancelDialog(int id) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -666,7 +575,10 @@ class _OrderListPageState extends State<OrderListPage> {
     }
   }
 
-  /// CATEGORY FILTER CHIP
+  // ============================
+  // FILTER CHIPS
+  // ============================
+
   Widget buildFilterChips() {
     final chips = [
       'Semua',
@@ -686,7 +598,10 @@ class _OrderListPageState extends State<OrderListPage> {
           return Padding(
             padding: const EdgeInsets.only(right: 10),
             child: GestureDetector(
-              onTap: () => setState(() => activeFilter = c),
+              onTap: () {
+                setState(() => activeFilter = c);
+                applySearchFilter();
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
@@ -712,10 +627,12 @@ class _OrderListPageState extends State<OrderListPage> {
     );
   }
 
+  // ============================
+  // MAIN UI
+  // ============================
+
   @override
   Widget build(BuildContext context) {
-    final filtered = getFilteredOrders();
-
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       body: SafeArea(
@@ -723,6 +640,8 @@ class _OrderListPageState extends State<OrderListPage> {
           children: [
             const CustomHeader(),
             const SizedBox(height: 8),
+
+            // SEARCH BAR
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: Container(
@@ -738,9 +657,14 @@ class _OrderListPageState extends State<OrderListPage> {
                     ),
                   ],
                 ),
-                child: const TextField(
-                  decoration: InputDecoration(
-                    hintText: "Silahkan Cari Sparepart Anda",
+                child: TextField(
+                  controller: searchController,
+                  onChanged: (value) {
+                    searchQuery = value;
+                    applySearchFilter();
+                  },
+                  decoration: const InputDecoration(
+                    hintText: "Cari pesanan Anda...",
                     hintStyle: TextStyle(
                       color: Colors.black45,
                       fontWeight: FontWeight.w500,
@@ -755,22 +679,24 @@ class _OrderListPageState extends State<OrderListPage> {
                 ),
               ),
             ),
+
             const SizedBox(height: 10),
             buildFilterChips(),
             const SizedBox(height: 8),
+
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : filtered.isEmpty
+                  : filteredOrders.isEmpty
                   ? const Center(child: Text('Belum ada pesanan.'))
                   : RefreshIndicator(
                       onRefresh: fetchOrders,
                       child: ListView.builder(
                         padding: const EdgeInsets.only(bottom: 100, top: 8),
-                        itemCount: filtered.length,
+                        itemCount: filteredOrders.length,
                         itemBuilder: (context, idx) {
                           final order = Map<String, dynamic>.from(
-                            filtered[idx],
+                            filteredOrders[idx],
                           );
                           return buildOrderCard(order);
                         },
@@ -780,6 +706,7 @@ class _OrderListPageState extends State<OrderListPage> {
           ],
         ),
       ),
+
       bottomNavigationBar: CustomBottomNavBar(
         selectedIndex: 3,
         userId: widget.userId,

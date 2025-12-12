@@ -31,7 +31,13 @@ class ChatService {
     return data.map((e) => ChatMessage.fromJson(e)).toList();
   }
 
-  Future<ChatMessage> sendMessage(String body) async {
+  Future<ChatMessage> sendMessage(
+    String body, {
+    int? productId,
+    String? productName,
+    int? productPrice,
+    String? productImage,
+  }) async {
     final token = await _storage.getToken();
     if (token == null) {
       throw Exception('Belum login');
@@ -46,7 +52,13 @@ class ChatService {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({'body': body}),
+      body: jsonEncode({
+        'body': body,
+        'product_id': productId,
+        'product_name': productName,
+        'product_price': productPrice,
+        'product_image': productImage,
+      }),
     );
 
     if (res.statusCode != 201 && res.statusCode != 200) {

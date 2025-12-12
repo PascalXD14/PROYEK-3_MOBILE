@@ -211,4 +211,38 @@ class OrderService {
       }),
     );
   }
+
+  Future<Map<String, dynamic>> payWithMidtrans({
+    required int userId,
+    required int productId,
+    required int qty,
+    required int total,
+    required String recipientName,
+    required String shippingAddress,
+  }) async {
+    final token = await _storage.getToken();
+    if (token == null) throw Exception("User belum login");
+
+    final response = await http.post(
+      ApiConfig.endpoint('midtrans/checkout'), // BENAR SESUAI ROUTE ANDA
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'user_id': userId,
+        'product_id': productId,
+        'qty': qty,
+        'total': total,
+        'recipient_name': recipientName,
+        'shipping_address': shippingAddress,
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Gagal transaksi Midtrans: ${response.body}");
+    }
+  }
 }

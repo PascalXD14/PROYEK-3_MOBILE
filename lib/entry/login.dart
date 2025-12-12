@@ -17,15 +17,26 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
 
   Future<void> _login() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+
+    // VALIDASI INPUT
+    if (username.isEmpty) {
+      _showSnackBar("Username, email, atau nomor telepon harus diisi");
+      return;
+    }
+
+    if (password.isEmpty) {
+      _showSnackBar("Password harus diisi");
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final response = await authService.customerLogin(
-        _usernameController.text.trim(),
-        _passwordController.text.trim(),
-      );
+      final response = await authService.customerLogin(username, password);
 
-      // Kalau login sukses dan user tidak null → langsung pindah ke HomePage
+      // VALIDASI HASIL LOGIN
       if (response['success'] == true && response['user'] != null) {
         if (!mounted) return;
         Navigator.pushReplacement(
@@ -34,8 +45,21 @@ class _LoginPageState extends State<LoginPage> {
             builder: (context) => HomePage(userData: response['user']),
           ),
         );
+        return;
+      }
+
+      // JIKA API MENGEMBALIKAN ERROR
+      final message = response['message']?.toString().toLowerCase() ?? "";
+
+      if (message.contains("not found") ||
+          message.contains("tidak ditemukan") ||
+          message.contains("user tidak ditemukan")) {
+        _showSnackBar("Akun tidak ditemukan");
+      } else if (message.contains("password") ||
+          message.contains("wrong password") ||
+          message.contains("password salah")) {
+        _showSnackBar("Password salah");
       } else {
-        // Kalau gagal login → tampilkan pesan error
         _showSnackBar(response['message'] ?? "Username atau password salah");
       }
     } catch (e) {
@@ -57,10 +81,8 @@ class _LoginPageState extends State<LoginPage> {
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          // Background putih
           Container(color: Colors.white),
 
-          // Ombak bawah
           Align(
             alignment: Alignment.bottomCenter,
             child: Image.asset(
@@ -70,7 +92,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
 
-          // Konten form
           SafeArea(
             child: SingleChildScrollView(
               padding: EdgeInsets.only(
@@ -79,11 +100,9 @@ class _LoginPageState extends State<LoginPage> {
                 top: 20,
                 bottom: MediaQuery.of(context).viewInsets.bottom + 20,
               ),
-
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Header
                   Stack(
                     children: [
                       Align(alignment: Alignment.topLeft),
@@ -115,13 +134,11 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 30),
 
-                  // Ilustrasi orang
                   Center(
                     child: Image.asset("assets/images/Orang.png", height: 200),
                   ),
                   const SizedBox(height: 20),
 
-                  // Title Login
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -134,7 +151,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Username/email/phone
                   TextField(
                     controller: _usernameController,
                     decoration: InputDecoration(
@@ -150,7 +166,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Password
                   TextField(
                     controller: _passwordController,
                     obscureText: true,
@@ -167,7 +182,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 10),
 
-                  // Belum daftar
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -193,7 +207,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Tombol Login
                   SizedBox(
                     width: double.infinity,
                     height: 50,

@@ -216,8 +216,7 @@ class ProfileService {
       body: jsonEncode({
         'current_password': currentPassword,
         'new_password': newPassword,
-        'new_password_confirmation':
-            newPassword, 
+        'new_password_confirmation': newPassword,
       }),
     );
 
@@ -258,5 +257,28 @@ class ProfileService {
     } catch (e) {
       debugPrint('Logout error: $e');
     }
+  }
+
+  Future<Map<String, dynamic>> deleteAccount(
+    int userId,
+    String username,
+    String password,
+  ) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/delete-account');
+
+    final resp = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'user_id': userId,
+        'username': username,
+        'password': password,
+      }),
+    );
+
+    return jsonDecode(resp.body);
   }
 }

@@ -78,9 +78,7 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   Future<void> _markAsRead(AppNotification notification) async {
-    // Implement jika ada fitur mark as read
-    setState(() {
-      // Update status notifikasi
+      setState(() {
     });
   }
 
@@ -374,7 +372,6 @@ class _NotificationPageState extends State<NotificationPage> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Avatar/Gambar dengan badge
                                 Stack(
                                   children: [
                                     Container(
@@ -584,7 +581,6 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-  /// * Image Fix *
   Widget _buildImage(String? url) {
     if (url != null && url.isNotEmpty) {
       return ClipRRect(

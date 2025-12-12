@@ -16,7 +16,10 @@ class ServiceStatusPage extends StatefulWidget {
 class _ServiceStatusPageState extends State<ServiceStatusPage> {
   final ServiceBookingService serviceBookingService = ServiceBookingService();
   List<dynamic> bookings = [];
+  List<dynamic> _allBookings = []; // NEW
   bool loading = true;
+
+  TextEditingController _searchController = TextEditingController(); // NEW
 
   int selectedIndex = 2;
 
@@ -34,21 +37,47 @@ class _ServiceStatusPageState extends State<ServiceStatusPage> {
     }
 
     try {
-      final result = await serviceBookingService.getUserServiceBookings(widget.userId);
+      final result = await serviceBookingService.getUserServiceBookings(
+        widget.userId,
+      );
 
       if (!mounted) return;
 
       setState(() {
-        bookings = List<dynamic>.from(result);
+        _allBookings = List<dynamic>.from(result);
+        bookings = List<dynamic>.from(result); // default tampilan
         loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() => loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat data: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal memuat data: $e')));
     }
+  }
+
+  // NEW: Fungsi search
+  void _filterBookings(String query) {
+    final keyword = query.toLowerCase();
+
+    setState(() {
+      bookings = _allBookings.where((item) {
+        final name = item["name"]?.toString().toLowerCase() ?? "";
+        final status = item["status"]?.toString().toLowerCase() ?? "";
+        final type = item["type"]?.toString().toLowerCase() ?? "";
+        final queue = item["queue_number"]?.toString().toLowerCase() ?? "";
+        final date = item["date"]?.toString().toLowerCase() ?? "";
+        final time = item["time"]?.toString().toLowerCase() ?? "";
+
+        return name.contains(keyword) ||
+            status.contains(keyword) ||
+            type.contains(keyword) ||
+            queue.contains(keyword) ||
+            date.contains(keyword) ||
+            time.contains(keyword);
+      }).toList();
+    });
   }
 
   void onNavTapped(int index) {
@@ -80,6 +109,8 @@ class _ServiceStatusPageState extends State<ServiceStatusPage> {
         child: Column(
           children: [
             const CustomHeader(),
+
+            // SEARCH BAR (UI sama, hanya tambah onChanged)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Container(
@@ -94,6 +125,8 @@ class _ServiceStatusPageState extends State<ServiceStatusPage> {
                   ],
                 ),
                 child: TextField(
+                  controller: _searchController,
+                  onChanged: _filterBookings, // NEW
                   decoration: InputDecoration(
                     hintText: "Cari pesanan service...",
                     filled: true,
@@ -118,9 +151,6 @@ class _ServiceStatusPageState extends State<ServiceStatusPage> {
                       horizontal: 16,
                     ),
                   ),
-                  onChanged: (q) {
-                    // opsional: implement search lokal nanti
-                  },
                 ),
               ),
             ),
@@ -132,132 +162,203 @@ class _ServiceStatusPageState extends State<ServiceStatusPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF10B981),
+                            ),
                           ),
                           SizedBox(height: 16),
-                          Text("Memuat data pesanan...", style: TextStyle(color: Color(0xFF6B7280))),
+                          Text(
+                            "Memuat data pesanan...",
+                            style: TextStyle(color: Color(0xFF6B7280)),
+                          ),
                         ],
                       ),
                     )
                   : bookings.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.car_repair, size: 80, color: Colors.grey[300]),
-                              const SizedBox(height: 16),
-                              const Text(
-                                "Belum ada pesanan service",
-                                style: TextStyle(fontSize: 18, color: Color(0xFF6B7280), fontWeight: FontWeight.w500),
-                              ),
-                              const SizedBox(height: 8),
-                              Text("Tekan tombol + untuk membuat pesanan pertama", style: TextStyle(fontSize: 14, color: Colors.grey[500]), textAlign: TextAlign.center),
-                            ],
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.car_repair,
+                            size: 80,
+                            color: Colors.grey[300],
                           ),
-                        )
-                      : SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Column(
-                            children: [
-                              ...bookings.asMap().entries.map((entry) {
-                                final item = entry.value as Map<String, dynamic>;
-                                final isLast = entry.key == bookings.length - 1;
+                          const SizedBox(height: 16),
+                          const Text(
+                            "Belum ada pesanan service",
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Color(0xFF6B7280),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Tekan tombol + untuk membuat pesanan pertama",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: [
+                          ...bookings.asMap().entries.map((entry) {
+                            final item = entry.value as Map<String, dynamic>;
+                            final isLast = entry.key == bookings.length - 1;
 
-                                final queueNumber = item['queue_number']?.toString() ?? '-';
-                                final date = item['date']?.toString() ?? '-';
-                                final time = item['time']?.toString() ?? '-';
+                            final queueNumber =
+                                item['queue_number']?.toString() ?? '-';
+                            final date = item['date']?.toString() ?? '-';
+                            final time = item['time']?.toString() ?? '-';
 
-                                return Container(
-                                  margin: EdgeInsets.only(bottom: isLast ? 20 : 12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
+                            return Container(
+                              margin: EdgeInsets.only(bottom: isLast ? 20 : 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
                                   ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                ],
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                item["name"] ?? "-",
-                                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
+                                        Expanded(
+                                          child: Text(
+                                            item["name"] ?? "-",
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF1E293B),
                                             ),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                              decoration: BoxDecoration(
-                                                color: statusColor((item["status"] ?? "Diproses").toString()),
-                                                borderRadius: BorderRadius.circular(20),
-                                              ),
-                                              child: Text(
-                                                item["status"] ?? "Diproses",
-                                                style: TextStyle(
-                                                  color: statusTextColor((item["status"] ?? "Diproses").toString()),
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
-                                        const SizedBox(height: 12),
-                                        _buildDetailRow(Icons.confirmation_number, "Nomor Antrian", queueNumber),
-                                        const SizedBox(height: 8),
-                                        _buildDetailRow(Icons.category, "Jenis Service", item["type"]?.toString() ?? "-"),
-                                        const SizedBox(height: 8),
-                                        _buildDetailRow(Icons.calendar_today, "Tanggal", date),
-                                        const SizedBox(height: 8),
-                                        _buildDetailRow(Icons.access_time, "Jam", time),
-                                        const SizedBox(height: 16),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: ElevatedButton(
-                                            onPressed: () async {
-                                              await Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => ServiceResumePage(serviceId: int.parse(item["id"].toString())),
-                                                ),
-                                              );
-                                              if (mounted) await loadData();
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF10B981),
-                                              foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(vertical: 12),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                              elevation: 0,
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: statusColor(
+                                              (item["status"] ?? "Diproses")
+                                                  .toString(),
                                             ),
-                                            child: const Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Icon(Icons.description, size: 18),
-                                                SizedBox(width: 8),
-                                                Text("Lihat Resume", style: TextStyle(fontWeight: FontWeight.w600)),
-                                              ],
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            item["status"] ?? "Diproses",
+                                            style: TextStyle(
+                                              color: statusTextColor(
+                                                (item["status"] ?? "Diproses")
+                                                    .toString(),
+                                              ),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                );
-                              }).toList(),
-                            ],
-                          ),
-                        ),
+                                    const SizedBox(height: 12),
+                                    _buildDetailRow(
+                                      Icons.confirmation_number,
+                                      "Nomor Antrian",
+                                      queueNumber,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildDetailRow(
+                                      Icons.category,
+                                      "Jenis Service",
+                                      item["type"]?.toString() ?? "-",
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildDetailRow(
+                                      Icons.calendar_today,
+                                      "Tanggal",
+                                      date,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildDetailRow(
+                                      Icons.access_time,
+                                      "Jam",
+                                      time,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: () async {
+                                          await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ServiceResumePage(
+                                                serviceId: int.parse(
+                                                  item["id"].toString(),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                          if (mounted) await loadData();
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(
+                                            0xFF10B981,
+                                          ),
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          elevation: 0,
+                                        ),
+                                        child: const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.description, size: 18),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              "Lihat Resume",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),
@@ -269,24 +370,42 @@ class _ServiceStatusPageState extends State<ServiceStatusPage> {
         elevation: 4,
         child: const Icon(Icons.add, size: 35),
         onPressed: () async {
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => ServiceFormPage(userId: widget.userId)));
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ServiceFormPage(userId: widget.userId),
+            ),
+          );
           if (mounted) await loadData();
         },
       ),
 
-      bottomNavigationBar: CustomBottomNavBar(selectedIndex: selectedIndex, userId: widget.userId),
+      bottomNavigationBar: CustomBottomNavBar(
+        selectedIndex: selectedIndex,
+        userId: widget.userId,
+      ),
     );
   }
 
-  // HELPER METHOD UNTUK DETAIL ROW
   Widget _buildDetailRow(IconData icon, String title, String value) {
     return Row(
       children: [
         Icon(icon, size: 16, color: const Color(0xFF6B7280)),
         const SizedBox(width: 8),
-        Text("$title: ", style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14, fontWeight: FontWeight.w500)),
+        Text(
+          "$title: ",
+          style: const TextStyle(
+            color: Color(0xFF6B7280),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         Expanded(
-          child: Text(value, style: const TextStyle(color: Color(0xFF1E293B), fontSize: 14, fontWeight: FontWeight.w400), overflow: TextOverflow.ellipsis),
+          child: Text(
+            value,
+            style: const TextStyle(color: Color(0xFF1E293B), fontSize: 14),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );

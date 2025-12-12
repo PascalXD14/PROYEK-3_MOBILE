@@ -4,6 +4,7 @@ import '../services/product_service.dart';
 import 'package:intl/intl.dart';
 import '../Address/address.dart';
 import '../pesanan/pesanan.dart';
+import '../payment/snap_webview.dart';
 
 class CheckoutPage extends StatefulWidget {
   final int productId;
@@ -39,11 +40,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Future<void> loadProduct() async {
     try {
       final data = await productService.getProductDetail(widget.productId);
+      if (!mounted) return;
+
       setState(() {
         product = data;
         isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => isLoading = false);
       ScaffoldMessenger.of(
         context,
@@ -52,7 +56,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Future<void> pilihAlamat() async {
-    // 🔹 Batasi guest
     if (widget.userData['role'] == 'guest') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Silakan login terlebih dahulu")),
@@ -65,7 +68,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       MaterialPageRoute(builder: (_) => const AddressListPage()),
     );
 
-    if (result != null) {
+    if (result != null && mounted) {
       setState(() {
         selectedAddress = result;
       });
@@ -81,6 +84,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
   double get biayaAdmin => 2000;
   double get totalTagihan => totalHarga + biayaAdmin;
 
+  
+  
   Future<void> bayarSekarang() async {
     if (widget.userData['role'] == 'guest') {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -94,45 +99,51 @@ class _CheckoutPageState extends State<CheckoutPage> {
     setState(() => isProcessing = true);
 
     try {
-      final response = await orderService.checkoutOrder(
+      final res = await orderService.payWithMidtrans(
         userId: widget.userData['id'],
         productId: product!['id'],
         qty: qty,
-        price: product!['price'],
         total: totalTagihan.toInt(),
-        paymentMethod: selectedPayment,
-        shipping: 0,
-        serviceFee: biayaAdmin.toInt(),
         recipientName: selectedAddress!['recipient_name'],
-        addressId: selectedAddress!['id'],
+        shippingAddress: selectedAddress!['address'],
       );
 
-      if (response['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pesanan berhasil dibuat!')),
-        );
+      if (res['success'] == true && res['redirect_url'] != null) {
+        final snapUrl = res['redirect_url'];
 
-        Navigator.pushReplacement(
+        
+        final result = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => OrderListPage(userId: widget.userData['id']),
+            builder: (_) => SnapWebView(
+              url: snapUrl,
+              userId: widget.userData['id'], 
+            ),
           ),
         );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message'] ?? 'Gagal membuat pesanan'),
-          ),
-        );
+
+        // pesanan
+        if (result == true) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => OrderListPage(userId: widget.userData['id']),
+            ),
+          );
+          return;
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
-    } finally {
-      setState(() => isProcessing = false);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
+      }
     }
+
+    if (mounted) setState(() => isProcessing = false);
   }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -222,9 +233,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
                   const Divider(height: 1),
-                  // (UI asli tetap semua di bawah)
+
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -297,13 +309,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 20),
                   const Divider(height: 1),
                   const SizedBox(height: 20),
+
                   const Text(
                     "Metode Pembayaran",
                     style: TextStyle(fontSize: 16),
                   ),
+
                   const SizedBox(height: 12),
                   Container(
                     decoration: BoxDecoration(
@@ -332,13 +347,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 20),
                   const Divider(height: 1),
                   const SizedBox(height: 20),
+
                   const Text(
                     "Ringkasan Belanja",
                     style: TextStyle(fontSize: 16),
                   ),
+
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -362,6 +380,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               ),
             ),
           ),
+
           Container(
             padding: const EdgeInsets.all(16),
             width: double.infinity,
