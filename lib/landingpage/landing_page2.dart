@@ -89,10 +89,21 @@ class LandingPage2 extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "Skip",
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LandingPage3(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "Skip",
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
                 ),
+
                 Row(
                   children: [buildDot(false), buildDot(true), buildDot(false)],
                 ),

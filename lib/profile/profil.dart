@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/profile_service.dart';
 import '../services/auth_service.dart';
 import '../entry/login.dart';
+import '../Address/address.dart';
 import '../widgets/navbar.dart';
 import 'pengaturan_akun.dart';
 import 'hapus_akun.dart';
@@ -657,8 +658,15 @@ class _ProfilePageState extends State<ProfilePage> {
                     icon: Icons.location_on_outlined,
                     text: 'Alamat Saya',
                     color: const Color(0xFF8B5CF6),
-                    onTap: () {},
+                    onTap: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AddressListPage(),
+                        ),
+                      );
+                    },
                   ),
+
                   _Menu(
                     icon: Icons.delete_outline_rounded,
                     text: 'Hapus Akun',

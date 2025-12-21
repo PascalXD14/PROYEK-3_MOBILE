@@ -1,20 +1,15 @@
 import 'package:flutter/material.dart';
-import '../services/order_service.dart';
-import '../services/product_service.dart';
 import 'package:intl/intl.dart';
+import '../services/order_service.dart';
 import '../Address/address.dart';
 import '../pesanan/pesanan.dart';
 import '../payment/snap_webview.dart';
 
 class CheckoutPage extends StatefulWidget {
-  final int productId;
+  final List<Map<String, dynamic>> items;
   final Map<String, dynamic> userData;
 
-  const CheckoutPage({
-    super.key,
-    required this.productId,
-    required this.userData,
-  });
+  const CheckoutPage({super.key, required this.items, required this.userData});
 
   @override
   State<CheckoutPage> createState() => _CheckoutPageState();
@@ -22,38 +17,10 @@ class CheckoutPage extends StatefulWidget {
 
 class _CheckoutPageState extends State<CheckoutPage> {
   final OrderService orderService = OrderService();
-  final ProductService productService = ProductService();
 
-  Map<String, dynamic>? product;
-  bool isLoading = true;
   bool isProcessing = false;
-  int qty = 1;
   String selectedPayment = "Transfer Bank";
   Map<String, dynamic>? selectedAddress;
-
-  @override
-  void initState() {
-    super.initState();
-    loadProduct();
-  }
-
-  Future<void> loadProduct() async {
-    try {
-      final data = await productService.getProductDetail(widget.productId);
-      if (!mounted) return;
-
-      setState(() {
-        product = data;
-        isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Gagal memuat produk: $e')));
-    }
-  }
 
   Future<void> pilihAlamat() async {
     if (widget.userData['role'] == 'guest') {
@@ -69,9 +36,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
 
     if (result != null && mounted) {
-      setState(() {
-        selectedAddress = result;
-      });
+      setState(() => selectedAddress = result);
     }
   }
 
@@ -80,12 +45,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return formatter.format(value);
   }
 
-  double get totalHarga => (product?['price'] ?? 0) * qty.toDouble();
+  double get totalHarga {
+    double total = 0;
+    for (final item in widget.items) {
+      total += (item['price'] * item['qty']).toDouble();
+    }
+    return total;
+  }
+
   double get biayaAdmin => 2000;
   double get totalTagihan => totalHarga + biayaAdmin;
 
-  
-  
   Future<void> bayarSekarang() async {
     if (widget.userData['role'] == 'guest') {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -94,15 +64,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
 
-    if (product == null || selectedAddress == null) return;
+    if (selectedAddress == null) return;
 
     setState(() => isProcessing = true);
 
     try {
-      final res = await orderService.payWithMidtrans(
+      final res = await orderService.payWithMidtransMulti(
         userId: widget.userData['id'],
-        productId: product!['id'],
-        qty: qty,
+        items: widget.items,
         total: totalTagihan.toInt(),
         recipientName: selectedAddress!['recipient_name'],
         shippingAddress: selectedAddress!['address'],
@@ -111,18 +80,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
       if (res['success'] == true && res['redirect_url'] != null) {
         final snapUrl = res['redirect_url'];
 
-        
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => SnapWebView(
-              url: snapUrl,
-              userId: widget.userData['id'], 
-            ),
+            builder: (_) =>
+                SnapWebView(url: snapUrl, userId: widget.userData['id']),
           ),
         );
 
-        // pesanan
         if (result == true) {
           Navigator.pushReplacement(
             context,
@@ -130,7 +95,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
               builder: (_) => OrderListPage(userId: widget.userData['id']),
             ),
           );
-          return;
         }
       }
     } catch (e) {
@@ -143,20 +107,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     if (mounted) setState(() => isProcessing = false);
   }
-  
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    if (product == null) {
-      return const Scaffold(
-        body: Center(child: Text('Produk tidak ditemukan')),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Checkout'),
@@ -173,6 +126,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  /// ALAMAT
                   const Text(
                     "Alamat Pengiriman",
                     style: TextStyle(fontSize: 16),
@@ -195,17 +149,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           const Icon(
                             Icons.location_on,
                             color: Colors.lightGreenAccent,
-                            size: 20,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: selectedAddress == null
                                 ? const Text(
                                     "Pilih alamat pengiriman",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey,
-                                    ),
+                                    style: TextStyle(color: Colors.grey),
                                   )
                                 : Column(
                                     crossAxisAlignment:
@@ -222,7 +172,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                       Text(
                                         "${selectedAddress!['phone']}\n${selectedAddress!['address']}",
                                         style: TextStyle(
-                                          fontSize: 14,
                                           color: Colors.grey[700],
                                         ),
                                       ),
@@ -235,90 +184,93 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
 
                   const SizedBox(height: 20),
-                  const Divider(height: 1),
+                  const Divider(),
 
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey[50],
-                    ),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            product!['image_url'],
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
+                  /// LIST PRODUK (MULTI + QTY CONTROL)
+                  ...widget.items.map((item) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey[50],
+                      ),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              item['image'],
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                product!['name'],
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['name'],
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "Rp${formatRupiah(product!['price'])}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Colors.green[800],
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Rp${formatRupiah(item['price'])}",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green[800],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  IconButton(
-                                    onPressed: qty > 1
-                                        ? () => setState(() => qty--)
-                                        : null,
-                                    icon: const Icon(
-                                      Icons.remove_circle_outline,
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: item['qty'] > 1
+                                          ? () => setState(() => item['qty']--)
+                                          : null,
+                                      icon: const Icon(
+                                        Icons.remove_circle_outline,
+                                      ),
+                                      color: Colors.green,
                                     ),
-                                    color: Colors.green,
-                                  ),
-                                  Text(
-                                    "$qty",
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                    Text(
+                                      "${item['qty']}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  ),
-                                  IconButton(
-                                    onPressed: qty < (product!['stock'] ?? 0)
-                                        ? () => setState(() => qty++)
-                                        : null,
-                                    icon: const Icon(Icons.add_circle_outline),
-                                    color: Colors.green,
-                                  ),
-                                ],
-                              ),
-                            ],
+                                    IconButton(
+                                      onPressed:
+                                          item['qty'] < (item['stock'] ?? 999)
+                                          ? () => setState(() => item['qty']++)
+                                          : null,
+                                      icon: const Icon(
+                                        Icons.add_circle_outline,
+                                      ),
+                                      color: Colors.green,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
 
-                  const SizedBox(height: 20),
-                  const Divider(height: 1),
+                  const Divider(),
                   const SizedBox(height: 20),
 
+                  /// METODE PEMBAYARAN
                   const Text(
                     "Metode Pembayaran",
                     style: TextStyle(fontSize: 16),
                   ),
-
                   const SizedBox(height: 12),
                   Container(
                     decoration: BoxDecoration(
@@ -349,38 +301,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
 
                   const SizedBox(height: 20),
-                  const Divider(height: 1),
+                  const Divider(),
                   const SizedBox(height: 20),
 
+                  /// RINGKASAN
                   const Text(
                     "Ringkasan Belanja",
                     style: TextStyle(fontSize: 16),
                   ),
-
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey[50],
-                    ),
-                    child: Column(
-                      children: [
-                        summaryRow("Total Harga (${qty} Barang)", totalHarga),
-                        const SizedBox(height: 8),
-                        summaryRow("Biaya Admin", biayaAdmin),
-                        const SizedBox(height: 12),
-                        const Divider(height: 1),
-                        const SizedBox(height: 12),
-                        summaryRow("Total Tagihan", totalTagihan, bold: true),
-                      ],
-                    ),
+                  summaryRow(
+                    "Total Harga (${widget.items.length} Barang)",
+                    totalHarga,
                   ),
+                  summaryRow("Biaya Admin", biayaAdmin),
+                  const Divider(),
+                  summaryRow("Total Tagihan", totalTagihan, bold: true),
                 ],
               ),
             ),
           ),
 
+          /// BUTTON BAYAR
           Container(
             padding: const EdgeInsets.all(16),
             width: double.infinity,
@@ -411,26 +353,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Widget summaryRow(String title, double value, {bool bold = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-            color: bold ? Colors.green[800] : Colors.black87,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
-        ),
-        Text(
-          "Rp${formatRupiah(value)}",
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-            color: bold ? Colors.green[800] : Colors.black87,
+          Text(
+            "Rp${formatRupiah(value)}",
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

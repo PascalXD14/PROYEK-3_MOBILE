@@ -43,7 +43,10 @@ class OrderService {
     final token = await _storage.getToken();
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id');
-    if (token == null || userId == null) throw Exception("User belum login");
+
+    if (token == null || userId == null) {
+      throw Exception("User belum login");
+    }
 
     final response = await http.get(
       ApiConfig.endpoint('orders/$userId'),
@@ -60,11 +63,9 @@ class OrderService {
       final data = jsonDecode(response.body);
       if (data is Map<String, dynamic>) {
         return data['data'] is List ? data['data'] : [];
-      } else if (data is List) {
-        return data;
-      } else {
-        return [];
       }
+      if (data is List) return data;
+      return [];
     } else if (response.statusCode == 401) {
       throw Exception('Unauthenticated. Token tidak valid.');
     } else {
@@ -92,12 +93,9 @@ class OrderService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       if (data is Map<String, dynamic>) {
-        return data['data'] is Map<String, dynamic>
-            ? data['data']
-            : (data['data'] ?? {});
-      } else {
-        return {};
+        return data['data'] ?? {};
       }
+      return {};
     } else if (response.statusCode == 401) {
       throw Exception('Unauthenticated. Token tidak valid.');
     } else {
@@ -124,41 +122,35 @@ class OrderService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      final success = (data['success'] == true) || (data['message'] != null);
+      final success = data['success'] == true || data['message'] != null;
 
       if (success) {
         try {
           ProductService.notifyProductsChanged();
         } catch (_) {}
       }
-
       return success;
-    } else if (response.statusCode == 401) {
-      throw Exception('Unauthenticated. Token tidak valid.');
-    } else {
-      throw Exception(
-        'Gagal membatalkan order (${response.statusCode}): ${response.body}',
-      );
     }
+
+    throw Exception(
+      'Gagal membatalkan order (${response.statusCode}): ${response.body}',
+    );
   }
 
-  Future<Map<String, dynamic>> checkoutOrder({
+  // ================= SINGLE MIDTRANS =================
+  Future<Map<String, dynamic>> payWithMidtrans({
     required int userId,
     required int productId,
     required int qty,
-    required int price,
     required int total,
-    required String paymentMethod,
-    required int shipping,
-    required int serviceFee,
     required String recipientName,
-    required int addressId,
+    required String shippingAddress,
   }) async {
     final token = await _storage.getToken();
     if (token == null) throw Exception("User belum login");
 
     final response = await http.post(
-      ApiConfig.endpoint('orders'),
+      ApiConfig.endpoint('midtrans/checkout'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -167,27 +159,66 @@ class OrderService {
         'user_id': userId,
         'product_id': productId,
         'qty': qty,
-        'price': price,
         'total': total,
-        'payment_method': paymentMethod,
-        'shipping': shipping,
-        'service_fee': serviceFee,
         'recipient_name': recipientName,
-        'shipping_address_id': addressId,
+        'shipping_address': shippingAddress,
       }),
     );
 
+    debugPrint('MIDTRANS SINGLE STATUS: ${response.statusCode}');
+    debugPrint('MIDTRANS SINGLE BODY: ${response.body}');
+
     if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body);
-    } else {
-      final error = jsonDecode(response.body);
-      throw Exception(
-        'Gagal membuat pesanan: ${error['message'] ?? response.body}',
-      );
     }
+    throw Exception("Gagal transaksi Midtrans: ${response.body}");
   }
 
-  // 👇 Tambahan khusus untuk ulasan
+  // ================= MULTI MIDTRANS =================
+  Future<Map<String, dynamic>> payWithMidtransMulti({
+    required int userId,
+    required List<Map<String, dynamic>> items,
+    required int total,
+    required String recipientName,
+    required String shippingAddress,
+  }) async {
+    final token = await _storage.getToken();
+    if (token == null) throw Exception("User belum login");
+
+    final response = await http.post(
+      ApiConfig.endpoint('midtrans/checkout'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'user_id': userId,
+        'items': items
+            .map(
+              (e) => {
+                'product_id': e['product_id'],
+                'price': e['price'],
+                'quantity': e['qty'],
+                'name': e['name'],
+              },
+            )
+            .toList(),
+        'total': total,
+        'recipient_name': recipientName,
+        'shipping_address': shippingAddress,
+      }),
+    );
+
+    debugPrint('MIDTRANS MULTI STATUS: ${response.statusCode}');
+    debugPrint('MIDTRANS MULTI BODY: ${response.body}');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    }
+    throw Exception("Gagal transaksi Midtrans (multi): ${response.body}");
+  }
+
+  // ================= REVIEW =================
   Future<void> sendReview({
     required int productId,
     required int transactionId,
@@ -210,39 +241,5 @@ class OrderService {
         'comment': comment,
       }),
     );
-  }
-
-  Future<Map<String, dynamic>> payWithMidtrans({
-    required int userId,
-    required int productId,
-    required int qty,
-    required int total,
-    required String recipientName,
-    required String shippingAddress,
-  }) async {
-    final token = await _storage.getToken();
-    if (token == null) throw Exception("User belum login");
-
-    final response = await http.post(
-      ApiConfig.endpoint('midtrans/checkout'), // BENAR SESUAI ROUTE ANDA
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'user_id': userId,
-        'product_id': productId,
-        'qty': qty,
-        'total': total,
-        'recipient_name': recipientName,
-        'shipping_address': shippingAddress,
-      }),
-    );
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception("Gagal transaksi Midtrans: ${response.body}");
-    }
   }
 }

@@ -409,7 +409,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             Expanded(
               flex: 1,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (_role == 'guest' || _userId == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -420,11 +420,21 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     return;
                   }
 
+                  final product = await _product;
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => CheckoutPage(
-                        productId: widget.productId,
+                        items: [
+                          {
+                            'product_id': widget.productId,
+                            'name': product['name'],
+                            'price': product['price'],
+                            'qty': 1,
+                            'image': product['image_url'],
+                          },
+                        ],
                         userData:
                             widget.userData ?? {'id': _userId, 'role': _role},
                       ),

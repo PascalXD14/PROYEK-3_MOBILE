@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'landing_page2.dart';
+import 'landing_page3.dart';
 
 class LandingPage extends StatelessWidget {
   const LandingPage({super.key});
@@ -95,10 +96,21 @@ class LandingPage extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "Skip",
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LandingPage3(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "Skip",
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
                 ),
+
                 Row(
                   children: [buildDot(true), buildDot(false), buildDot(false)],
                 ),

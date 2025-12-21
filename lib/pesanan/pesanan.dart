@@ -57,7 +57,7 @@ class _OrderListPageState extends State<OrderListPage> {
   }
 
   // ============================
-  // SEARCH BAR FUNCTION
+  // SEARCH BAR FUNCTION (DARI KODE PERTAMA)
   // ============================
   void applySearchFilter() {
     final q = searchQuery.toLowerCase();
@@ -99,7 +99,7 @@ class _OrderListPageState extends State<OrderListPage> {
   }
 
   // ============================
-  // HELPER METHODS
+  // HELPER METHODS (DARI KODE PERTAMA)
   // ============================
 
   String extractTransactionCode(Map<String, dynamic> order) {
@@ -192,7 +192,7 @@ class _OrderListPageState extends State<OrderListPage> {
   }
 
   // ============================
-  // CARD UI
+  // CARD UI (DARI KODE KEDUA - UI YANG DIMINTA)
   // ============================
 
   Widget buildOrderCard(Map<String, dynamic> order) {
@@ -319,6 +319,7 @@ class _OrderListPageState extends State<OrderListPage> {
 
               const SizedBox(height: 14),
 
+              // BUTTON LOGIKA (DARI KODE PERTAMA)
               if (status.toLowerCase() == 'diproses')
                 OutlinedButton(
                   onPressed: () => _showCancelDialog(order['id']),
@@ -353,7 +354,7 @@ class _OrderListPageState extends State<OrderListPage> {
   }
 
   // ============================
-  // REVIEW DIALOG (ORIGINAL WORKING)
+  // REVIEW DIALOG (DARI KODE PERTAMA - ORIGINAL WORKING)
   // ============================
 
   Future<void> _showReviewDialog(int productId, int transactionId) async {
@@ -547,7 +548,7 @@ class _OrderListPageState extends State<OrderListPage> {
   }
 
   // ============================
-  // CANCEL ORDER
+  // CANCEL ORDER (DARI KODE PERTAMA)
   // ============================
 
   Future<void> _showCancelDialog(int id) async {
@@ -576,7 +577,7 @@ class _OrderListPageState extends State<OrderListPage> {
   }
 
   // ============================
-  // FILTER CHIPS
+  // FILTER CHIPS (DARI KODE PERTAMA)
   // ============================
 
   Widget buildFilterChips() {
@@ -628,7 +629,7 @@ class _OrderListPageState extends State<OrderListPage> {
   }
 
   // ============================
-  // MAIN UI
+  // MAIN UI (DARI KODE KEDUA - UI YANG DIMINTA)
   // ============================
 
   @override
@@ -641,7 +642,7 @@ class _OrderListPageState extends State<OrderListPage> {
             const CustomHeader(),
             const SizedBox(height: 8),
 
-            // SEARCH BAR
+            // SEARCH BAR (DARI KODE KEDUA)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: Container(
@@ -684,6 +685,7 @@ class _OrderListPageState extends State<OrderListPage> {
             buildFilterChips(),
             const SizedBox(height: 8),
 
+            // ORDER LIST (DENGAN LOGIKA DARI KODE PERTAMA)
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())

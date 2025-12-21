@@ -49,10 +49,13 @@ class _NotificationPageState extends State<NotificationPage> {
   Future<void> _deleteLocal(int id) async {
     final success = await _notifService.deleteNotification(id);
 
+    if (!mounted) return; // ⬅️ WAJIB
+
     if (success) {
       setState(() {
         _notifications.removeWhere((n) => n.id == id);
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Notifikasi berhasil dihapus"),
@@ -78,8 +81,7 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   Future<void> _markAsRead(AppNotification notification) async {
-      setState(() {
-    });
+    setState(() {});
   }
 
   @override

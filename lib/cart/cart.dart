@@ -238,7 +238,15 @@ class _CartPageState extends State<CartPage> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => CheckoutPage(
-                                  productId: productId,
+                                  items: selected.map((item) {
+                                    return {
+                                      'product_id': item['product']['id'],
+                                      'name': item['product']['name'],
+                                      'price': item['product']['price'],
+                                      'qty': item['qty'],
+                                      'image': item['product']['image_url'],
+                                    };
+                                  }).toList(),
                                   userData: {'id': userId, 'role': role},
                                 ),
                               ),
