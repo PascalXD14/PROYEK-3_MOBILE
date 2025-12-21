@@ -6,6 +6,7 @@ import '../checkout/checkout_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../services/chat_service.dart';
+import '../cart/cart.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final int productId;
@@ -162,7 +163,27 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             size: 26,
                             color: Colors.black87,
                           ),
-                          onPressed: () {},
+                          onPressed: () async {
+                            // Cegah guest masuk keranjang
+                            if (_role == 'guest' || _userId == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Silakan login terlebih dahulu.',
+                                  ),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                              return;
+                            }
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CartPage(userId: _userId!),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),

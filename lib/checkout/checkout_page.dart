@@ -64,37 +64,65 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
 
-    if (selectedAddress == null) return;
+    if (selectedAddress == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Silakan pilih alamat pengiriman terlebih dahulu"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
 
     setState(() => isProcessing = true);
 
     try {
-      final res = await orderService.payWithMidtransMulti(
-        userId: widget.userData['id'],
-        items: widget.items,
-        total: totalTagihan.toInt(),
-        recipientName: selectedAddress!['recipient_name'],
-        shippingAddress: selectedAddress!['address'],
-      );
-
-      if (res['success'] == true && res['redirect_url'] != null) {
-        final snapUrl = res['redirect_url'];
-
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                SnapWebView(url: snapUrl, userId: widget.userData['id']),
-          ),
+      if (selectedPayment == "COD") {
+        final res = await orderService.createOrderCOD(
+          userId: widget.userData['id'],
+          items: widget.items,
+          total: totalTagihan.toInt(),
+          recipientName: selectedAddress!['recipient_name'],
+          shippingAddress: selectedAddress!['address'],
         );
 
-        if (result == true) {
+        if (res['success'] == true) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (_) => OrderListPage(userId: widget.userData['id']),
             ),
           );
+        }
+      } else {
+        // 🟢 KODE LAMA LU (MIDTRANS) — TIDAK DIUBAH
+        final res = await orderService.payWithMidtransMulti(
+          userId: widget.userData['id'],
+          items: widget.items,
+          total: totalTagihan.toInt(),
+          recipientName: selectedAddress!['recipient_name'],
+          shippingAddress: selectedAddress!['address'],
+        );
+
+        if (res['success'] == true && res['redirect_url'] != null) {
+          final snapUrl = res['redirect_url'];
+
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  SnapWebView(url: snapUrl, userId: widget.userData['id']),
+            ),
+          );
+
+          if (result == true) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => OrderListPage(userId: widget.userData['id']),
+              ),
+            );
+          }
         }
       }
     } catch (e) {

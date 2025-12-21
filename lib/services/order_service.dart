@@ -242,4 +242,31 @@ class OrderService {
       }),
     );
   }
+
+  Future<Map<String, dynamic>> createOrderCOD({
+    required int userId,
+    required List<Map<String, dynamic>> items,
+    required int total,
+    required String recipientName,
+    required String shippingAddress,
+  }) async {
+    return createOrder({
+      'user_id': userId,
+      'items': items
+          .map(
+            (e) => {
+              'product_id': e['product_id'],
+              'price': e['price'],
+              'qty': e['qty'],
+              'name': e['name'],
+            },
+          )
+          .toList(),
+      'total': total,
+      'payment_method': 'COD',
+      'payment_status': 'unpaid',
+      'recipient_name': recipientName,
+      'shipping_address': shippingAddress,
+    });
+  }
 }
