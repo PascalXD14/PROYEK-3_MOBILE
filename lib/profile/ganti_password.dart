@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/profile_service.dart';
 import '../services/auth_service.dart';
-import 'dart:convert';
 
 class ChangePasswordPage extends StatefulWidget {
   final int userId;
@@ -19,7 +18,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool loading = false;
   ProfileService? service;
 
-  // toggle visibility
   bool _showCurrent = false;
   bool _showNew = false;
   bool _showConfirm = false;
@@ -32,7 +30,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   Future<void> _initService() async {
     final token = await AuthService().getToken();
-    debugPrint('ChangePasswordPage: token: ${token ?? "NULL"}');
     if (token == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -46,34 +43,24 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 
   Future<void> _changePassword() async {
-    // basic client-side checks
     if (newC.text != confirmC.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password baru tidak cocok')),
-      );
+      _showSnackbar('Password baru tidak cocok', isError: true);
       return;
     }
 
     if (newC.text.length < 8) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password minimal 8 karakter')),
-      );
+      _showSnackbar('Password minimal 8 karakter', isError: true);
       return;
     }
 
     if (service == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Service belum siap, coba lagi')),
-      );
+      _showSnackbar('Service belum siap, coba lagi', isError: true);
       return;
     }
 
     setState(() => loading = true);
 
     try {
-      debugPrint(
-        'ChangePasswordPage: request changePassword (sending current/new)',
-      );
       await service!.changePassword(currentC.text.trim(), newC.text.trim());
       if (!mounted) return;
 
@@ -82,50 +69,23 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       newC.clear();
       confirmC.clear();
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Password berhasil diubah')));
+      _showSnackbar('Password berhasil diubah', isError: false);
     } catch (e) {
       if (!mounted) return;
       setState(() => loading = false);
-
-      String msg = 'Gagal ganti password';
-
-      // coba parse pesan error dari exception (jika backend mengembalikan JSON)
-      try {
-        final err = e.toString();
-        debugPrint('ChangePasswordPage: exception -> $err');
-
-        final jsonStart = err.indexOf('{');
-        if (jsonStart != -1) {
-          final jsonStr = err.substring(jsonStart);
-          final body = jsonDecode(jsonStr);
-
-          if (body is Map && body['message'] != null) {
-            msg = body['message'].toString();
-          } else if (body is Map && body['errors'] != null) {
-            final errors = body['errors'] as Map;
-            if (errors.values.isNotEmpty) {
-              final first = errors.values.first;
-              if (first is List && first.isNotEmpty) {
-                msg = first.first.toString();
-              } else {
-                msg = first.toString();
-              }
-            }
-          } else {
-            msg = jsonStr;
-          }
-        } else {
-          // fallback: gunakan string exception
-          msg = e.toString();
-        }
-      } catch (errParsing) {
-        debugPrint('ChangePasswordPage: parse error -> $errParsing');
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      _showSnackbar(e.toString(), isError: true);
     }
+  }
+
+  void _showSnackbar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.redAccent : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   @override
@@ -139,91 +99,157 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Widget _buildPasswordField({
     required TextEditingController controller,
     required String label,
+    required IconData prefixIcon,
     required bool obscure,
     required VoidCallback toggle,
     required bool show,
   }) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        suffixIcon: IconButton(
-          icon: Icon(show ? Icons.visibility_off : Icons.visibility),
-          onPressed: toggle,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         ),
-      ),
-      obscureText: obscure,
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          obscureText: obscure,
+          decoration: InputDecoration(
+            hintText: 'Masukkan $label',
+            prefixIcon: Icon(prefixIcon, size: 20),
+            suffixIcon: IconButton(
+              icon: Icon(
+                show ? Icons.visibility_off : Icons.visibility,
+                size: 20,
+              ),
+              onPressed: toggle,
+            ),
+            filled: true,
+            fillColor: Colors.grey[50],
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 16,
+              horizontal: 16,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.blue, width: 2),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Ganti Kata Sandi')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildPasswordField(
-              controller: currentC,
-              label: 'Password saat ini',
-              obscure: !_showCurrent,
-              toggle: () => setState(() => _showCurrent = !_showCurrent),
-              show: _showCurrent,
-            ),
-            const SizedBox(height: 8),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text(
+          'Ganti Kata Sandi',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black,
+            size: 20,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Amankan Akun Anda',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Pastikan password baru Anda sulit ditebak dan mengandung kombinasi angka.',
+                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+              ),
+              const SizedBox(height: 32),
 
-            _buildPasswordField(
-              controller: newC,
-              label: 'Password baru',
-              obscure: !_showNew,
-              toggle: () => setState(() => _showNew = !_showNew),
-              show: _showNew,
-            ),
-            const SizedBox(height: 8),
+              _buildPasswordField(
+                controller: currentC,
+                label: 'Password saat ini',
+                prefixIcon: Icons.lock_outline,
+                obscure: !_showCurrent,
+                toggle: () => setState(() => _showCurrent = !_showCurrent),
+                show: _showCurrent,
+              ),
+              const SizedBox(height: 20),
 
-            _buildPasswordField(
-              controller: confirmC,
-              label: 'Konfirmasi password baru',
-              obscure: !_showConfirm,
-              toggle: () => setState(() => _showConfirm = !_showConfirm),
-              show: _showConfirm,
-            ),
-            const SizedBox(height: 16),
+              _buildPasswordField(
+                controller: newC,
+                label: 'Password baru',
+                prefixIcon: Icons.vpn_key_outlined,
+                obscure: !_showNew,
+                toggle: () => setState(() => _showNew = !_showNew),
+                show: _showNew,
+              ),
+              const SizedBox(height: 20),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: loading ? null : _changePassword,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+              _buildPasswordField(
+                controller: confirmC,
+                label: 'Konfirmasi password baru',
+                prefixIcon: Icons.check_circle_outline,
+                obscure: !_showConfirm,
+                toggle: () => setState(() => _showConfirm = !_showConfirm),
+                show: _showConfirm,
+              ),
+              const SizedBox(height: 40),
+
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: loading ? null : _changePassword,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 68, 255, 115),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
                   ),
                   child: loading
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Text('Sedang memproses...'),
-                          ],
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Colors.white,
+                          ),
                         )
-                      : const Text('Ganti Kata Sandi'),
+                      : const Text(
+                          'Simpan Perubahan',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
-            ),
-
-            if (loading) const SizedBox(height: 12),
-            if (loading) const CircularProgressIndicator(),
-          ],
+            ],
+          ),
         ),
       ),
     );
